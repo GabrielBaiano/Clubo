@@ -1,455 +1,455 @@
-import { Overlayer } from './overlayer.js';
+import { Overlayer } from './overlayer.js'
 
-const $ = document.querySelector.bind(document);
+const $ = document.querySelector.bind(document)
 
 // Preset of colors for members
 const PRESET_COLORS = [
-    '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', 
-    '#03a9f4', '#00bcd4', '#009688', '#259b24', 
-    '#ff9800', '#ff5722', '#795548', '#607d8b'
-];
+    '#e91e63', '#9c27b0', '#673ab7', '#3f51b5',
+    '#03a9f4', '#00bcd4', '#009688', '#259b24',
+    '#ff9800', '#ff5722', '#795548', '#607d8b',
+]
 
-let ws = null;
-let roomId = null;
-let myId = null;
-let currentUser = null;
-let myDiscordId = null;
-let myAvatarUrl = null;
-let members = [];
-let myName = localStorage.getItem('bc-name') || 'Reader ' + Math.floor(Math.random() * 1000);
-let myColor = localStorage.getItem('bc-color') || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
-let intentionalClose = false;
-let isIdle = false;
-let idleTimeout = null;
-const IDLE_TIME_LIMIT = 15 * 60 * 1000; // 15 minutes of inactivity before disconnect
+let ws = null
+let roomId = null
+let myId = null
+let currentUser = null
+let myDiscordId = null
+let myAvatarUrl = null
+let members = []
+let myName = localStorage.getItem('bc-name') || 'Reader ' + Math.floor(Math.random() * 1000)
+let myColor = localStorage.getItem('bc-color') || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]
+let intentionalClose = false
+let isIdle = false
+let idleTimeout = null
+const IDLE_TIME_LIMIT = 15 * 60 * 1000 // 15 minutes of inactivity before disconnect
 
 // Local state caches
-let activeMembers = {};
-let activeHighlights = {};
-let activeCommentCfi = null;
-let pendingCommentCfi = null;
-let pendingCommentText = null; // Stores comment text while waiting for CFI confirmation
-let selectionMenu = null;
+let activeMembers = {}
+let activeHighlights = {}
+let activeCommentCfi = null
+let pendingCommentCfi = null
+let pendingCommentText = null // Stores comment text while waiting for CFI confirmation
+let selectionMenu = null
 
 // Live Cursor Synchronization State
-const peerCursors = new Map(); // wsId -> DOM element
-const cursorTimeouts = new Map(); // wsId -> timeoutId for inactivity fade-out
-let lastMoveTime = 0;
-let currentSectionIndex = null;
-let floatingComposer = null;
-let hoverPopover = null;
-let hoverPopoverTimeout = null;
-let isMouseOverPopover = false;
-let selectedColor = myColor;
+const peerCursors = new Map() // wsId -> DOM element
+const cursorTimeouts = new Map() // wsId -> timeoutId for inactivity fade-out
+let lastMoveTime = 0
+let currentSectionIndex = null
+let floatingComposer = null
+let hoverPopover = null
+let hoverPopoverTimeout = null
+let isMouseOverPopover = false
+let selectedColor = myColor
 
 // Initialize layout tabs
 function initTabs() {
-    const tabToc = $('#tab-toc');
-    const tabBookclub = $('#tab-bookclub');
-    const tocView = $('#toc-view');
-    const bookclubView = $('#bookclub-view');
+    const tabToc = $('#tab-toc')
+    const tabBookclub = $('#tab-bookclub')
+    const tocView = $('#toc-view')
+    const bookclubView = $('#bookclub-view')
 
     tabToc.addEventListener('click', () => {
-        tabToc.classList.add('active');
-        tabBookclub.classList.remove('active');
-        tocView.classList.add('active');
-        bookclubView.classList.remove('active');
-    });
+        tabToc.classList.add('active')
+        tabBookclub.classList.remove('active')
+        tocView.classList.add('active')
+        bookclubView.classList.remove('active')
+    })
 
     tabBookclub.addEventListener('click', () => {
-        tabBookclub.classList.add('active');
-        tabToc.classList.remove('active');
-        bookclubView.classList.add('active');
-        tocView.classList.remove('active');
-    });
+        tabBookclub.classList.add('active')
+        tabToc.classList.remove('active')
+        bookclubView.classList.add('active')
+        tocView.classList.remove('active')
+    })
 }
 
 // Check room ID from URL parameters
 async function checkRoomParam() {
-    const params = new URLSearchParams(window.location.search);
-    const urlRoomId = params.get('room');
-    
+    const params = new URLSearchParams(window.location.search)
+    const urlRoomId = params.get('room')
+
     if (urlRoomId && urlRoomId !== 'null' && urlRoomId !== 'undefined') {
-        roomId = urlRoomId;
+        roomId = urlRoomId
         try {
-            const res = await fetch(`/api/rooms/${roomId}`);
+            const res = await fetch(`/api/rooms/${roomId}`)
             if (res.ok) {
-                const roomData = await res.json();
-                
+                const roomData = await res.json()
+
                 if (roomData.hasBook) {
-                    console.log(`[Book Club] Joining Room ${roomId}. Downloading book...`);
-                    showLoading('Joining room and downloading book...');
+                    console.log(`[Book Club] Joining Room ${roomId}. Downloading book...`)
+                    showLoading('Joining room and downloading book...')
                     // Programmatic loading of book
                     if (globalThis.openBook) {
-                        await globalThis.openBook(roomData.bookPath);
+                        await globalThis.openBook(roomData.bookPath)
                     } else {
-                        console.error('[Book Club] globalThis.openBook not found');
-                        hideLoading();
+                        console.error('[Book Club] globalThis.openBook not found')
+                        hideLoading()
                     }
                 } else {
-                    console.log(`[Book Club] Room ${roomId} found but book is expired. Showing re-upload panel.`);
-                    showReuploadPanel(roomData.title, roomData.author);
-                    hideLoading();
+                    console.log(`[Book Club] Room ${roomId} found but book is expired. Showing re-upload panel.`)
+                    showReuploadPanel(roomData.title, roomData.author)
+                    hideLoading()
                 }
             } else {
-                const errData = await res.json().catch(() => ({}));
-                alert(errData.error || 'Room not found! Check the code you entered.');
-                window.history.replaceState({}, document.title, window.location.pathname);
-                showSetupPanel();
-                hideLoading();
+                const errData = await res.json().catch(() => ({}))
+                alert(errData.error || 'Room not found! Check the code you entered.')
+                window.history.replaceState({}, document.title, window.location.pathname)
+                showSetupPanel()
+                hideLoading()
             }
         } catch (err) {
-            console.error('[Book Club] Failed to check room:', err);
-            showSetupPanel();
-            hideLoading();
+            console.error('[Book Club] Failed to check room:', err)
+            showSetupPanel()
+            hideLoading()
         }
     } else {
-        showSetupPanel();
+        showSetupPanel()
     }
 }
 
 // Global Loading Overlay Controls with Progress Bar
 function showLoading(text, percent = 0, subtext = '') {
-    const overlay = document.getElementById('bc-loading-overlay');
-    const textEl = document.getElementById('bc-loading-text');
-    const percentEl = document.getElementById('bc-loading-percent');
-    const barEl = document.getElementById('bc-loading-progress-bar');
-    const subtextEl = document.getElementById('bc-loading-subtext');
-    
+    const overlay = document.getElementById('bc-loading-overlay')
+    const textEl = document.getElementById('bc-loading-text')
+    const percentEl = document.getElementById('bc-loading-percent')
+    const barEl = document.getElementById('bc-loading-progress-bar')
+    const subtextEl = document.getElementById('bc-loading-subtext')
+
     if (overlay) {
-        if (textEl && text) textEl.innerText = text;
-        const p = Math.min(100, Math.max(0, percent));
-        if (percentEl) percentEl.innerText = `${Math.round(p)}%`;
-        if (barEl) barEl.style.width = `${p}%`;
-        if (subtextEl) subtextEl.innerText = subtext || (p > 0 ? `${Math.round(p)}% completed` : 'Starting...');
-        
+        if (textEl && text) textEl.innerText = text
+        const p = Math.min(100, Math.max(0, percent))
+        if (percentEl) percentEl.innerText = `${Math.round(p)}%`
+        if (barEl) barEl.style.width = `${p}%`
+        if (subtextEl) subtextEl.innerText = subtext || (p > 0 ? `${Math.round(p)}% completed` : 'Starting...')
+
         if (overlay.style.display !== 'flex') {
-            overlay.style.display = 'flex';
-            overlay.offsetHeight; // force reflow
-            overlay.style.opacity = '1';
+            overlay.style.display = 'flex'
+            overlay.offsetHeight // force reflow
+            overlay.style.opacity = '1'
         }
     }
 }
-window.showLoading = showLoading;
+window.showLoading = showLoading
 
 function updateLoadingProgress(percent, subtext = '') {
-    const percentEl = document.getElementById('bc-loading-percent');
-    const barEl = document.getElementById('bc-loading-progress-bar');
-    const subtextEl = document.getElementById('bc-loading-subtext');
-    
-    const p = Math.min(100, Math.max(0, percent));
-    if (percentEl) percentEl.innerText = `${Math.round(p)}%`;
-    if (barEl) barEl.style.width = `${p}%`;
-    if (subtextEl && subtext) subtextEl.innerText = subtext;
+    const percentEl = document.getElementById('bc-loading-percent')
+    const barEl = document.getElementById('bc-loading-progress-bar')
+    const subtextEl = document.getElementById('bc-loading-subtext')
+
+    const p = Math.min(100, Math.max(0, percent))
+    if (percentEl) percentEl.innerText = `${Math.round(p)}%`
+    if (barEl) barEl.style.width = `${p}%`
+    if (subtextEl && subtext) subtextEl.innerText = subtext
 }
-window.updateLoadingProgress = updateLoadingProgress;
+window.updateLoadingProgress = updateLoadingProgress
 
 function hideLoading() {
-    const overlay = document.getElementById('bc-loading-overlay');
+    const overlay = document.getElementById('bc-loading-overlay')
     if (overlay) {
-        overlay.style.opacity = '0';
+        overlay.style.opacity = '0'
         setTimeout(() => {
             if (overlay.style.opacity === '0') {
-                overlay.style.display = 'none';
-                updateLoadingProgress(0, '');
+                overlay.style.display = 'none'
+                updateLoadingProgress(0, '')
             }
-        }, 250);
+        }, 250)
     }
 }
-window.hideLoading = hideLoading;
+window.hideLoading = hideLoading
 
 function uploadFileWithProgress(url, formData, onProgress) {
     return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', url, true);
-        
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', url, true)
+
         xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
-                const totalMB = (e.total / (1024 * 1024)).toFixed(1);
-                onProgress(percent, loadedMB, totalMB);
+                const percent = Math.round((e.loaded / e.total) * 100)
+                const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1)
+                const totalMB = (e.total / (1024 * 1024)).toFixed(1)
+                onProgress(percent, loadedMB, totalMB)
             }
-        };
-        
+        }
+
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
-                    resolve(JSON.parse(xhr.responseText));
+                    resolve(JSON.parse(xhr.responseText))
                 } catch (e) {
-                    resolve(xhr.responseText);
+                    resolve(xhr.responseText)
                 }
             } else {
                 try {
-                    const err = JSON.parse(xhr.responseText);
-                    reject(new Error(err.error || 'Upload failed'));
+                    const err = JSON.parse(xhr.responseText)
+                    reject(new Error(err.error || 'Upload failed'))
                 } catch (e) {
-                    reject(new Error('Upload failed'));
+                    reject(new Error('Upload failed'))
                 }
             }
-        };
-        
-        xhr.onerror = () => reject(new Error('Network error uploading file'));
-        xhr.send(formData);
-    });
+        }
+
+        xhr.onerror = () => reject(new Error('Network error uploading file'))
+        xhr.send(formData)
+    })
 }
 
 // Show/Hide Panels
 function showSetupPanel() {
-    $('#bc-setup-panel').style.display = 'block';
-    $('#bc-room-panel').style.display = 'none';
-    $('#bc-reupload-panel').style.display = 'none';
-    renderMembersPill();
+    $('#bc-setup-panel').style.display = 'block'
+    $('#bc-room-panel').style.display = 'none'
+    $('#bc-reupload-panel').style.display = 'none'
+    renderMembersPill()
 }
 
 function showReuploadPanel(title, author) {
-    $('#bc-setup-panel').style.display = 'none';
-    $('#bc-room-panel').style.display = 'none';
-    $('#bc-reupload-panel').style.display = 'block';
-    $('#bc-reupload-title-val').innerText = title || 'Untitled';
-    $('#bc-reupload-author-val').innerText = author || 'Unknown';
-    renderMembersPill();
+    $('#bc-setup-panel').style.display = 'none'
+    $('#bc-room-panel').style.display = 'none'
+    $('#bc-reupload-panel').style.display = 'block'
+    $('#bc-reupload-title-val').innerText = title || 'Untitled'
+    $('#bc-reupload-author-val').innerText = author || 'Unknown'
+    renderMembersPill()
 }
 
 function showRoomPanel() {
-    $('#bc-setup-panel').style.display = 'none';
-    $('#bc-reupload-panel').style.display = 'none';
-    $('#bc-room-panel').style.display = 'block';
-    $('#bc-room-id-val').innerText = roomId;
-    renderMembersPill();
+    $('#bc-setup-panel').style.display = 'none'
+    $('#bc-reupload-panel').style.display = 'none'
+    $('#bc-room-panel').style.display = 'block'
+    $('#bc-room-id-val').innerText = roomId
+    renderMembersPill()
 }
 
 // Handle Room Setup Events
 function initSetupEvents() {
     // Create Room Button
     $('#bc-create-room-btn').addEventListener('click', async () => {
-        const reader = globalThis.reader;
+        const reader = globalThis.reader
         if (!reader || !reader.currentFile) {
-            alert('Please open a book first by dragging a file or choosing from the menu before starting the club!');
-            return;
+            alert('Please open a book first by dragging a file or choosing from the menu before starting the club!')
+            return
         }
 
-        const file = reader.currentFile;
-        const metadata = reader.view.book.metadata;
-        const title = (metadata && metadata.title) ? (typeof metadata.title === 'string' ? metadata.title : Object.values(metadata.title)[0]) : 'Untitled';
-        const author = (metadata && metadata.author) ? (typeof metadata.author === 'string' ? metadata.author : Object.values(metadata.author)[0]) : 'Unknown';
+        const file = reader.currentFile
+        const metadata = reader.view.book.metadata
+        const title = (metadata && metadata.title) ? (typeof metadata.title === 'string' ? metadata.title : Object.values(metadata.title)[0]) : 'Untitled'
+        const author = (metadata && metadata.author) ? (typeof metadata.author === 'string' ? metadata.author : Object.values(metadata.author)[0]) : 'Unknown'
 
-        const formData = new FormData();
-        formData.append('book', file);
-        formData.append('title', title);
-        formData.append('author', author);
+        const formData = new FormData()
+        formData.append('book', file)
+        formData.append('title', title)
+        formData.append('author', author)
 
-        showLoading('Creating room and uploading book...', 0, 'Starting upload...');
-        $('#bc-create-room-btn').innerText = 'Creating Room...';
-        $('#bc-create-room-btn').disabled = true;
+        showLoading('Creating room and uploading book...', 0, 'Starting upload...')
+        $('#bc-create-room-btn').innerText = 'Creating Room...'
+        $('#bc-create-room-btn').disabled = true
 
         try {
             const roomData = await uploadFileWithProgress('/api/rooms', formData, (percent, loadedMB, totalMB) => {
-                updateLoadingProgress(percent, `Uploading book (${loadedMB} MB / ${totalMB} MB)`);
-            });
+                updateLoadingProgress(percent, `Uploading book (${loadedMB} MB / ${totalMB} MB)`)
+            })
 
             if (roomData && roomData.roomId) {
-                roomId = roomData.roomId;
-                
+                roomId = roomData.roomId
+
                 // Update URL parameter
-                const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
-                window.history.pushState({ roomId }, document.title, newUrl);
-                
-                showRoomPanel();
-                connectWebSocket();
+                const newUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`
+                window.history.pushState({ roomId }, document.title, newUrl)
+
+                showRoomPanel()
+                connectWebSocket()
             } else {
-                alert('Error creating room.');
+                alert('Error creating room.')
             }
         } catch (err) {
-            console.error('[Book Club] Create room error:', err);
-            alert(err.message || 'Network error creating room.');
+            console.error('[Book Club] Create room error:', err)
+            alert(err.message || 'Network error creating room.')
         } finally {
-            hideLoading();
-            $('#bc-create-room-btn').innerText = 'Create Room with Current Book';
-            $('#bc-create-room-btn').disabled = false;
+            hideLoading()
+            $('#bc-create-room-btn').innerText = 'Create Room with Current Book'
+            $('#bc-create-room-btn').disabled = false
         }
-    });
+    })
 
     // Join Room Button
     $('#bc-join-room-btn').addEventListener('click', () => {
-        const inputVal = $('#bc-join-id-input').value.trim();
+        const inputVal = $('#bc-join-id-input').value.trim()
         if (!inputVal) {
-            alert('Enter a valid room code.');
-            return;
+            alert('Enter a valid room code.')
+            return
         }
-        
-        const newUrl = `${window.location.origin}${window.location.pathname}?room=${inputVal}`;
-        window.location.href = newUrl;
-    });
+
+        const newUrl = `${window.location.origin}${window.location.pathname}?room=${inputVal}`
+        window.location.href = newUrl
+    })
 
     // Copy Invite Link by clicking room code badge
-    const roomIdVal = $('#bc-room-id-val');
+    const roomIdVal = $('#bc-room-id-val')
     if (roomIdVal) {
         roomIdVal.addEventListener('click', () => {
-            if (!roomId) return;
-            const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+            if (!roomId) return
+            const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`
             navigator.clipboard.writeText(inviteUrl).then(() => {
-                const originalText = roomIdVal.textContent;
-                roomIdVal.textContent = 'Copied!';
+                const originalText = roomIdVal.textContent
+                roomIdVal.textContent = 'Copied!'
                 setTimeout(() => {
-                    roomIdVal.textContent = originalText;
-                }, 1800);
-            });
-        });
+                    roomIdVal.textContent = originalText
+                }, 1800)
+            })
+        })
     }
 
     // Leave Room / Go Home Logic
     const leaveRoomAndGoHome = () => {
         if (ws) {
-            intentionalClose = true;
-            ws.close();
-            ws = null;
+            intentionalClose = true
+            ws.close()
+            ws = null
         }
-        roomId = null;
-        localStorage.removeItem('redirect_room');
-        window.history.pushState({}, document.title, window.location.pathname);
-        window.location.reload();
-    };
-    globalThis.leaveBookClubAndGoHome = leaveRoomAndGoHome;
+        roomId = null
+        localStorage.removeItem('redirect_room')
+        window.history.pushState({}, document.title, window.location.pathname)
+        window.location.reload()
+    }
+    globalThis.leaveBookClubAndGoHome = leaveRoomAndGoHome
 
     // Leave Room Button
-    const leaveBtn = $('#bc-leave-room-btn');
+    const leaveBtn = $('#bc-leave-room-btn')
     if (leaveBtn) {
-        leaveBtn.addEventListener('click', leaveRoomAndGoHome);
+        leaveBtn.addEventListener('click', leaveRoomAndGoHome)
     }
 
     // Select Re-upload file button click
-    const selectReuploadBtn = $('#bc-select-reupload-btn');
-    const reuploadFileInput = $('#bc-reupload-file-input');
+    const selectReuploadBtn = $('#bc-select-reupload-btn')
+    const reuploadFileInput = $('#bc-reupload-file-input')
     if (selectReuploadBtn && reuploadFileInput) {
         selectReuploadBtn.addEventListener('click', () => {
-            reuploadFileInput.click();
-        });
-        
+            reuploadFileInput.click()
+        })
+
         reuploadFileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
+            const file = e.target.files[0]
             if (file && globalThis.openBook) {
-                await globalThis.openBook(file);
+                await globalThis.openBook(file)
             }
-        });
+        })
     }
 
     // Cancel Re-upload button click
-    const cancelReuploadBtn = $('#bc-cancel-reupload-btn');
+    const cancelReuploadBtn = $('#bc-cancel-reupload-btn')
     if (cancelReuploadBtn) {
         cancelReuploadBtn.addEventListener('click', () => {
-            window.history.replaceState({}, document.title, window.location.pathname);
-            roomId = null;
-            showSetupPanel();
-        });
+            window.history.replaceState({}, document.title, window.location.pathname)
+            roomId = null
+            showSetupPanel()
+        })
     }
 
 
 
     // Drop-target join button (home screen — before book is loaded)
-    const dropJoinBtn = $('#drop-join-btn');
-    const dropJoinInput = $('#drop-join-input');
+    const dropJoinBtn = $('#drop-join-btn')
+    const dropJoinInput = $('#drop-join-input')
     if (dropJoinBtn && dropJoinInput) {
         const doJoin = () => {
-            let val = dropJoinInput.value.trim();
-            if (!val) return;
+            let val = dropJoinInput.value.trim()
+            if (!val) return
             // Support pasting the full invite URL — extract just the room param
             try {
-                const parsed = new URL(val);
-                const roomParam = parsed.searchParams.get('room');
-                if (roomParam) val = roomParam;
+                const parsed = new URL(val)
+                const roomParam = parsed.searchParams.get('room')
+                if (roomParam) val = roomParam
             } catch (_) { /* not a URL, use as-is */ }
             if (val && val !== 'null') {
-                window.location.href = `${window.location.pathname}?room=${val}`;
+                window.location.href = `${window.location.pathname}?room=${val}`
             }
-        };
-        dropJoinBtn.addEventListener('click', doJoin);
+        }
+        dropJoinBtn.addEventListener('click', doJoin)
         dropJoinInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') doJoin();
-        });
+            if (e.key === 'Enter') doJoin()
+        })
     }
 }
 
-let mouseMovePendingTimer = null;
-let lastMouseData = null;
+let mouseMovePendingTimer = null
+let lastMouseData = null
 
 // Send current mouse coordinates to the room, throttled to 40ms (~25fps) with trailing update
 function sendMouseMove(e, isInsideIframe, doc) {
-    if (!roomId) return;
+    if (!roomId) return
 
-    let x = e.clientX;
-    let y = e.clientY;
+    let x = e.clientX
+    let y = e.clientY
 
     if (isInsideIframe && doc) {
-        const iframe = doc.defaultView.frameElement;
+        const iframe = doc.defaultView.frameElement
         if (iframe) {
-            const rect = iframe.getBoundingClientRect();
-            x += rect.left;
-            y += rect.top;
+            const rect = iframe.getBoundingClientRect()
+            x += rect.left
+            y += rect.top
         }
     }
 
-    const pctX = x / window.innerWidth;
-    const pctY = y / window.innerHeight;
+    const pctX = x / window.innerWidth
+    const pctY = y / window.innerHeight
 
     lastMouseData = {
         type: 'mousemove',
         x: pctX,
         y: pctY,
-        index: currentSectionIndex
-    };
+        index: currentSectionIndex,
+    }
 
-    const now = Date.now();
+    const now = Date.now()
     if (now - lastMoveTime >= 40) {
-        lastMoveTime = now;
+        lastMoveTime = now
         if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(lastMouseData));
+            ws.send(JSON.stringify(lastMouseData))
         }
         if (mouseMovePendingTimer) {
-            clearTimeout(mouseMovePendingTimer);
-            mouseMovePendingTimer = null;
+            clearTimeout(mouseMovePendingTimer)
+            mouseMovePendingTimer = null
         }
     } else if (!mouseMovePendingTimer) {
         mouseMovePendingTimer = setTimeout(() => {
-            mouseMovePendingTimer = null;
-            lastMoveTime = Date.now();
+            mouseMovePendingTimer = null
+            lastMoveTime = Date.now()
             if (ws && ws.readyState === WebSocket.OPEN && lastMouseData) {
-                ws.send(JSON.stringify(lastMouseData));
+                ws.send(JSON.stringify(lastMouseData))
             }
-        }, 40);
+        }, 40)
     }
 }
 
 // Create or update a peer's cursor on our screen
 function handlePeerMouseMove(data) {
-    const { wsId, name, color, x, y, index } = data;
+    const { wsId, name, color, x, y, index } = data
 
     // Only show cursor if they are on the same section as us
     if (index !== currentSectionIndex) {
-        const existingCursor = peerCursors.get(wsId);
+        const existingCursor = peerCursors.get(wsId)
         if (existingCursor) {
-            existingCursor.style.display = 'none';
+            existingCursor.style.display = 'none'
         }
-        return;
+        return
     }
 
-    let cursorEl = peerCursors.get(wsId);
+    let cursorEl = peerCursors.get(wsId)
     if (cursorEl && (cursorEl.dataset.color !== color || cursorEl.dataset.name !== name)) {
-        cursorEl.remove();
-        cursorEl = null;
+        cursorEl.remove()
+        cursorEl = null
     }
 
     if (!cursorEl) {
-        cursorEl = document.createElement('div');
-        cursorEl.className = 'bc-peer-cursor';
-        cursorEl.style.position = 'fixed';
-        cursorEl.style.pointerEvents = 'none';
-        cursorEl.style.zIndex = '999999';
-        cursorEl.style.transition = 'left 0.1s linear, top 0.1s linear, opacity 0.3s ease';
-        cursorEl.style.opacity = '0';
-        cursorEl.dataset.color = color;
-        cursorEl.dataset.name = name;
-        
+        cursorEl = document.createElement('div')
+        cursorEl.className = 'bc-peer-cursor'
+        cursorEl.style.position = 'fixed'
+        cursorEl.style.pointerEvents = 'none'
+        cursorEl.style.zIndex = '999999'
+        cursorEl.style.transition = 'left 0.1s linear, top 0.1s linear, opacity 0.3s ease'
+        cursorEl.style.opacity = '0'
+        cursorEl.dataset.color = color
+        cursorEl.dataset.name = name
+
         cursorEl.innerHTML = `
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="transform: translate(-2px, -2px); filter: drop-shadow(0 2px 2px rgba(0,0,0,0.35));">
                 <path d="M4.5 3V19L9.5 14L15.5 20L18.5 17L12.5 11L17.5 7.5L4.5 3Z" fill="${color}" stroke="white" stroke-width="2"/>
@@ -457,192 +457,194 @@ function handlePeerMouseMove(data) {
             <div style="background-color: ${color}; color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 10px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; margin-left: 14px; margin-top: -6px; box-shadow: 0 2px 5px rgba(0,0,0,0.25); font-weight: bold;">
                 ${name}
             </div>
-        `;
-        document.body.appendChild(cursorEl);
-        peerCursors.set(wsId, cursorEl);
+        `
+        document.body.appendChild(cursorEl)
+        peerCursors.set(wsId, cursorEl)
     }
 
     // Reset inactivity timeout for this cursor
     if (cursorTimeouts.has(wsId)) {
-        clearTimeout(cursorTimeouts.get(wsId));
+        clearTimeout(cursorTimeouts.get(wsId))
     }
 
-    cursorEl.style.display = 'block';
+    cursorEl.style.display = 'block'
     // Small delay ensures element displays block before opacity transition starts
     requestAnimationFrame(() => {
-        cursorEl.style.opacity = '1';
-    });
+        cursorEl.style.opacity = '1'
+    })
 
     // Calculate pixel coordinates based on our current viewport size
-    cursorEl.style.left = `${x * window.innerWidth}px`;
-    cursorEl.style.top = `${y * window.innerHeight}px`;
+    cursorEl.style.left = `${x * window.innerWidth}px`
+    cursorEl.style.top = `${y * window.innerHeight}px`
 
     // Set timeout to fade out cursor after 3 seconds of inactivity
     const timeoutId = setTimeout(() => {
-        cursorEl.style.opacity = '0';
+        cursorEl.style.opacity = '0'
         setTimeout(() => {
             if (cursorEl.style.opacity === '0') {
-                cursorEl.style.display = 'none';
+                cursorEl.style.display = 'none'
             }
-        }, 300);
-    }, 3000);
+        }, 300)
+    }, 3000)
 
-    cursorTimeouts.set(wsId, timeoutId);
+    cursorTimeouts.set(wsId, timeoutId)
 }
 
-let reconnectAttempts = 0;
-let reconnectTimeout = null;
+let reconnectAttempts = 0
+let reconnectTimeout = null
 
 // WebSocket connection management
 function connectWebSocket() {
-    if (!roomId) return;
+    if (!roomId) return
 
     // Close any existing WebSocket connection cleanly before establishing a new one
     if (ws) {
-        console.log('[Book Club] Closing existing WebSocket connection before reconnecting...');
-        intentionalClose = true;
-        ws.close();
-        ws = null;
+        console.log('[Book Club] Closing existing WebSocket connection before reconnecting...')
+        intentionalClose = true
+        ws.close()
+        ws = null
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
-    
-    console.log(`[Book Club] Connecting to WebSockets at ${wsUrl}`);
-    ws = new WebSocket(wsUrl);
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${protocol}//${window.location.host}`
+
+    console.log(`[Book Club] Connecting to WebSockets at ${wsUrl}`)
+    ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-        console.log('[Book Club] WS Connection established');
-        reconnectAttempts = 0; // Reset backoff on clean connection
+        console.log('[Book Club] WS Connection established')
+        reconnectAttempts = 0 // Reset backoff on clean connection
         // Join room message
         ws.send(JSON.stringify({
             type: 'join',
             roomId,
             name: myName,
-            color: myColor
-        }));
-    };
+            color: myColor,
+        }))
+    }
 
     ws.onmessage = (event) => {
         try {
-            const data = JSON.parse(event.data);
-            handleWSMessage(data);
+            const data = JSON.parse(event.data)
+            handleWSMessage(data)
         } catch (err) {
-            console.error('[Book Club] WS message error:', err);
+            console.error('[Book Club] WS message error:', err)
         }
-    };
+    }
 
     ws.onclose = () => {
-        console.log('[Book Club] WS Connection closed.');
+        console.log('[Book Club] WS Connection closed.')
         if (!intentionalClose && roomId) {
-            reconnectAttempts++;
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
-            console.log(`[Book Club] Unexpected close, reconnecting in ${delay}ms (attempt #${reconnectAttempts})...`);
-            clearTimeout(reconnectTimeout);
-            reconnectTimeout = setTimeout(() => connectWebSocket(), delay);
+            reconnectAttempts++
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000)
+            console.log(`[Book Club] Unexpected close, reconnecting in ${delay}ms (attempt #${reconnectAttempts})...`)
+            clearTimeout(reconnectTimeout)
+            reconnectTimeout = setTimeout(() => connectWebSocket(), delay)
         }
-        intentionalClose = false;
-    };
+        intentionalClose = false
+    }
 
     ws.onerror = (err) => {
-        console.error('[Book Club] WS error:', err);
-    };
+        console.error('[Book Club] WS error:', err)
+    }
 }
 
 function handleWSMessage(data) {
     switch (data.type) {
         case 'room_state':
-            myId = data.yourId;
-            activeMembers = data.members;
-            activeHighlights = data.highlights;
+            myId = data.yourId
+            activeMembers = data.members
+            activeHighlights = data.highlights
 
             // Check if our own color got reassigned by server due to conflict
             if (activeMembers[myId] && activeMembers[myId].color !== myColor) {
-                myColor = activeMembers[myId].color;
-                localStorage.setItem('bc-color', myColor);
-                updateSliderThumbColor();
-                
-                const dropdownBtn = $('#bc-color-dropdown-btn');
-                if (dropdownBtn) dropdownBtn.style.backgroundColor = myColor;
-                
+                myColor = activeMembers[myId].color
+                localStorage.setItem('bc-color', myColor)
+                updateSliderThumbColor()
+
+                const dropdownBtn = $('#bc-color-dropdown-btn')
+                if (dropdownBtn) dropdownBtn.style.backgroundColor = myColor
+
                 // Re-select color presets in sidebar dropdown
-                const dropdownMenu = $('#bc-color-dropdown-menu');
+                const dropdownMenu = $('#bc-color-dropdown-menu')
                 if (dropdownMenu) {
                     dropdownMenu.querySelectorAll('.bc-color-swatch').forEach(s => {
-                        s.classList.toggle('selected', s.dataset.color === myColor);
-                    });
+                        s.classList.toggle('selected', s.dataset.color === myColor)
+                    })
                 }
             }
 
-            renderMembersList();
-            renderAllHighlights();
-            break;
-            
+            renderMembersList()
+            renderAllHighlights()
+            break
+
         case 'member_joined':
-            activeMembers[data.wsId] = data.member;
-            renderMembersList();
-            break;
+            activeMembers[data.wsId] = data.member
+            renderMembersList()
+            break
 
         case 'member_updated':
             if (activeMembers[data.wsId]) {
-                activeMembers[data.wsId] = { ...activeMembers[data.wsId], ...data.member };
-                renderMembersList();
+                activeMembers[data.wsId] = { ...activeMembers[data.wsId], ...data.member }
+                renderMembersList()
             }
-            break;
-            
+            break
+
         case 'member_relocated':
             if (activeMembers[data.wsId]) {
-                activeMembers[data.wsId].cfi = data.cfi;
-                activeMembers[data.wsId].fraction = data.fraction;
-                activeMembers[data.wsId].chapter = data.chapter || '';
-                renderMembersList();
+                activeMembers[data.wsId].cfi = data.cfi
+                activeMembers[data.wsId].fraction = data.fraction
+                activeMembers[data.wsId].chapter = data.chapter || ''
+                renderMembersList()
             }
-            break;
-            
-        case 'member_left':
-            delete activeMembers[data.wsId];
-            renderMembersList();
-            
+            break
+
+        case 'member_left': {
+            delete activeMembers[data.wsId]
+            renderMembersList()
+
             // Clean up cursor element
-            const cursorEl = peerCursors.get(data.wsId);
+            const cursorEl = peerCursors.get(data.wsId)
             if (cursorEl) {
-                cursorEl.remove();
-                peerCursors.delete(data.wsId);
+                cursorEl.remove()
+                peerCursors.delete(data.wsId)
             }
-            break;
+            break
+        }
 
         case 'mousemove':
-            handlePeerMouseMove(data);
-            break;
-            
-        case 'highlight_added':
-            const hCfi = data.cfi || data.highlight?.cfi;
+            handlePeerMouseMove(data)
+            break
+
+        case 'highlight_added': {
+            const hCfi = data.cfi || data.highlight?.cfi
             if (hCfi && data.highlight) {
-                activeHighlights[hCfi] = data.highlight;
-                drawHighlightOnView(data.highlight);
+                activeHighlights[hCfi] = data.highlight
+                drawHighlightOnView(data.highlight)
             }
-            break;
-            
+            break
+        }
+
         case 'highlight_deleted':
             if (activeHighlights[data.cfi]) {
-                removeHighlightFromView(data.cfi);
-                delete activeHighlights[data.cfi];
+                removeHighlightFromView(data.cfi)
+                delete activeHighlights[data.cfi]
             }
-            break;
-            
+            break
+
         case 'error':
-            alert(data.message);
+            alert(data.message)
             if (data.message && data.message.includes('full')) {
-                intentionalClose = true;
-                window.location.href = window.location.origin + window.location.pathname;
+                intentionalClose = true
+                window.location.href = window.location.origin + window.location.pathname
             }
-            break;
+            break
 
         case 'room_deleted':
-            alert('This room has been deleted by the creator.');
-            intentionalClose = true;
-            window.location.href = window.location.origin + window.location.pathname;
-            break;
+            alert('This room has been deleted by the creator.')
+            intentionalClose = true
+            window.location.href = window.location.origin + window.location.pathname
+            break
     }
 }
 
@@ -652,167 +654,167 @@ function sendIdentityUpdate() {
         ws.send(JSON.stringify({
             type: 'update_identity',
             name: myName,
-            color: myColor
-        }));
+            color: myColor,
+        }))
         // Update local member state immediately
         if (myId && activeMembers[myId]) {
-            activeMembers[myId].name = myName;
-            activeMembers[myId].color = myColor;
-            renderMembersList();
-            updateSliderThumbColor();
+            activeMembers[myId].name = myName
+            activeMembers[myId].color = myColor
+            renderMembersList()
+            updateSliderThumbColor()
         }
     }
 }
 // Color the slider thumb with the current user's color
 function updateSliderThumbColor() {
-    const slider = $('#progress-slider');
+    const slider = $('#progress-slider')
     if (slider) {
-        slider.style.setProperty('--bc-user-color', myColor);
+        slider.style.setProperty('--bc-user-color', myColor)
     }
 }
 
 // Render progress bar markers (colored dots per member, excluding self, plus custom chapter ticks)
 function renderProgressMarkers() {
-    updateSliderThumbColor();
+    updateSliderThumbColor()
 
-    const container = $('#bc-progress-markers');
-    if (!container) return;
-    container.innerHTML = '';
+    const container = $('#bc-progress-markers')
+    if (!container) return
+    container.innerHTML = ''
 
-    const slider = $('#progress-slider');
-    if (!slider || slider.style.visibility === 'hidden') return;
+    const slider = $('#progress-slider')
+    if (!slider || slider.style.visibility === 'hidden') return
 
     // Get the actual pixel width of the slider track
-    const thumbSize = 16;
-    const trackWidth = slider.offsetWidth;
-    if (trackWidth === 0) return;
+    const thumbSize = 16
+    const trackWidth = slider.offsetWidth
+    if (trackWidth === 0) return
 
     // 1. Draw custom chapter ticks (so they show on all browsers/custom sliders)
     if (globalThis.reader?.view?.getSectionFractions) {
-        const fractions = globalThis.reader.view.getSectionFractions();
+        const fractions = globalThis.reader.view.getSectionFractions()
         fractions.forEach(fraction => {
-            const xPx = fraction * (trackWidth - thumbSize) + thumbSize / 2;
-            const tick = document.createElement('div');
-            tick.className = 'bc-progress-tick';
-            tick.style.left = `${xPx}px`;
-            container.appendChild(tick);
-        });
+            const xPx = fraction * (trackWidth - thumbSize) + thumbSize / 2
+            const tick = document.createElement('div')
+            tick.className = 'bc-progress-tick'
+            tick.style.left = `${xPx}px`
+            container.appendChild(tick)
+        })
     }
 
     // 2. Collect only OTHER members (skip self, as native thumb is user's dot)
-    const others = Object.entries(activeMembers).filter(([id]) => id !== myId);
-    if (others.length === 0) return;
+    const others = Object.entries(activeMembers).filter(([id]) => id !== myId)
+    if (others.length === 0) return
 
     // Group members that are within 3% of each other (cluster threshold)
-    const CLUSTER_THRESHOLD = 0.03;
-    const clusters = [];
-    const used = new Set();
+    const CLUSTER_THRESHOLD = 0.03
+    const clusters = []
+    const used = new Set()
 
     for (let i = 0; i < others.length; i++) {
-        if (used.has(i)) continue;
-        const [idA, memberA] = others[i];
-        if (memberA.fraction == null) continue;
+        if (used.has(i)) continue
+        const [idA, memberA] = others[i]
+        if (memberA.fraction == null) continue
 
-        const cluster = [[idA, memberA]];
-        used.add(i);
+        const cluster = [[idA, memberA]]
+        used.add(i)
 
         for (let j = i + 1; j < others.length; j++) {
-            if (used.has(j)) continue;
-            const [idB, memberB] = others[j];
-            if (memberB.fraction == null) continue;
+            if (used.has(j)) continue
+            const [idB, memberB] = others[j]
+            if (memberB.fraction == null) continue
             if (Math.abs(memberA.fraction - memberB.fraction) <= CLUSTER_THRESHOLD) {
-                cluster.push([idB, memberB]);
-                used.add(j);
+                cluster.push([idB, memberB])
+                used.add(j)
             }
         }
-        clusters.push(cluster);
+        clusters.push(cluster)
     }
 
     // Render each cluster
     for (const cluster of clusters) {
         // Average fraction for positioning
-        const avgFraction = cluster.reduce((sum, [, m]) => sum + m.fraction, 0) / cluster.length;
+        const avgFraction = cluster.reduce((sum, [, m]) => sum + m.fraction, 0) / cluster.length
 
         // Correct pixel position matching range thumb
-        const xPx = avgFraction * (trackWidth - thumbSize) + thumbSize / 2;
+        const xPx = avgFraction * (trackWidth - thumbSize) + thumbSize / 2
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'bc-progress-dot-wrapper';
-        wrapper.style.left = `${xPx}px`;
+        const wrapper = document.createElement('div')
+        wrapper.className = 'bc-progress-dot-wrapper'
+        wrapper.style.left = `${xPx}px`
 
         if (cluster.length === 1) {
             // Single dot
-            const [id, member] = cluster[0];
-            const dot = document.createElement('div');
-            dot.className = 'bc-progress-dot';
-            dot.style.backgroundColor = member.color;
+            const [id, member] = cluster[0]
+            const dot = document.createElement('div')
+            dot.className = 'bc-progress-dot'
+            dot.style.backgroundColor = member.color
 
-            const label = document.createElement('div');
-            label.className = 'bc-progress-dot-label';
-            label.textContent = `${member.name} · ${Math.round(member.fraction * 100)}%`;
-            dot.appendChild(label);
+            const label = document.createElement('div')
+            label.className = 'bc-progress-dot-label'
+            label.textContent = `${member.name} · ${Math.round(member.fraction * 100)}%`
+            dot.appendChild(label)
 
             if (member.cfi) {
-                dot.addEventListener('click', () => globalThis.reader?.view?.goTo(member.cfi));
+                dot.addEventListener('click', () => globalThis.reader?.view?.goTo(member.cfi))
             }
-            wrapper.appendChild(dot);
+            wrapper.appendChild(dot)
         } else {
             // Stacked cluster — multi-ring dot
-            const stack = document.createElement('div');
-            stack.className = 'bc-progress-stack';
+            const stack = document.createElement('div')
+            stack.className = 'bc-progress-stack'
 
             // Render concentric colored rings (outer to inner)
             cluster.forEach(([, member], idx) => {
-                const ring = document.createElement('div');
-                ring.className = 'bc-progress-ring';
-                const size = 12 + idx * 4; // each ring slightly larger
-                ring.style.width = `${size}px`;
-                ring.style.height = `${size}px`;
-                ring.style.backgroundColor = member.color;
-                ring.style.zIndex = String(10 - idx);
-                stack.appendChild(ring);
-            });
+                const ring = document.createElement('div')
+                ring.className = 'bc-progress-ring'
+                const size = 12 + idx * 4 // each ring slightly larger
+                ring.style.width = `${size}px`
+                ring.style.height = `${size}px`
+                ring.style.backgroundColor = member.color
+                ring.style.zIndex = String(10 - idx)
+                stack.appendChild(ring)
+            })
 
             // Count badge
-            const badge = document.createElement('div');
-            badge.className = 'bc-progress-badge';
-            badge.textContent = cluster.length;
-            stack.appendChild(badge);
+            const badge = document.createElement('div')
+            badge.className = 'bc-progress-badge'
+            badge.textContent = cluster.length
+            stack.appendChild(badge)
 
             // Label on hover
-            const label = document.createElement('div');
-            label.className = 'bc-progress-dot-label';
-            label.textContent = cluster.map(([, m]) => `${m.name} ${Math.round(m.fraction * 100)}%`).join(' · ');
-            stack.appendChild(label);
+            const label = document.createElement('div')
+            label.className = 'bc-progress-dot-label'
+            label.textContent = cluster.map(([, m]) => `${m.name} ${Math.round(m.fraction * 100)}%`).join(' · ')
+            stack.appendChild(label)
 
             // Click teleports to first member in cluster
             stack.addEventListener('click', () => {
-                const cfi = cluster.find(([, m]) => m.cfi)?.[1].cfi;
-                if (cfi) globalThis.reader?.view?.goTo(cfi);
-            });
+                const cfi = cluster.find(([, m]) => m.cfi)?.[1].cfi
+                if (cfi) globalThis.reader?.view?.goTo(cfi)
+            })
 
-            wrapper.appendChild(stack);
+            wrapper.appendChild(stack)
         }
 
-        container.appendChild(wrapper);
+        container.appendChild(wrapper)
     }
 }
 
 
 // Render members list
 function renderMembersList() {
-    const list = $('#bc-members-list');
-    list.innerHTML = '';
-    
-    let count = 0;
+    const list = $('#bc-members-list')
+    list.innerHTML = ''
+
+    let count = 0
     for (const [id, member] of Object.entries(activeMembers)) {
-        count++;
-        const isMe = id === myId;
-        const item = document.createElement('div');
-        item.className = 'bc-member-item';
-        
-        const pct = member.fraction != null ? Math.round(member.fraction * 100) : 0;
-        
+        count++
+        const isMe = id === myId
+        const item = document.createElement('div')
+        item.className = 'bc-member-item'
+
+        const pct = member.fraction != null ? Math.round(member.fraction * 100) : 0
+
         item.innerHTML = `
             <div class="bc-member-left">
                 <span class="bc-avatar" style="background-color: ${member.color};"></span>
@@ -825,468 +827,470 @@ function renderMembersList() {
                 <span class="bc-member-progress">${pct}%</span>
                 ${(!isMe && member.cfi) ? `<button class="bc-teleport-btn" data-cfi="${member.cfi}">Go to</button>` : ''}
             </div>
-        `;
-        list.appendChild(item);
+        `
+        list.appendChild(item)
     }
-    
-    $('#bc-member-count').innerText = `${count} / 10`;
-    renderProgressMarkers();
-    renderMembersPill();
+
+    $('#bc-member-count').innerText = `${count} / 10`
+    renderProgressMarkers()
+    renderMembersPill()
 
     // Teleport click handlers
     list.querySelectorAll('.bc-teleport-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const cfi = e.target.getAttribute('data-cfi');
+            const cfi = e.target.getAttribute('data-cfi')
             if (cfi && globalThis.reader) {
-                globalThis.reader.view.goTo(cfi);
+                globalThis.reader.view.goTo(cfi)
             }
-        });
-    });
+        })
+    })
 }
 
-let openUserMenu = null;
+let openUserMenu = null
 
 // Close user context menu on outside click or escape
 document.addEventListener('click', (e) => {
     if (openUserMenu && !openUserMenu.contains(e.target)) {
-        openUserMenu.remove();
-        openUserMenu = null;
+        openUserMenu.remove()
+        openUserMenu = null
     }
-});
+})
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && openUserMenu) {
-        openUserMenu.remove();
-        openUserMenu = null;
+        openUserMenu.remove()
+        openUserMenu = null
     }
-});
+})
 
 // Render the compact members pill in the header toolbar
 function renderMembersPill() {
-    const pill = $('#bc-members-pill');
-    if (!pill) return;
+    const pill = $('#bc-members-pill')
+    if (!pill) return
 
     // Ensure header bar is only visible when inside a book reader view, keeping home screen clean
-    const headerBar = $('#header-bar');
+    const headerBar = $('#header-bar')
     if (headerBar) {
-        const dropTarget = $('#drop-target');
-        const isHome = dropTarget && dropTarget.style.display !== 'none';
+        const dropTarget = $('#drop-target')
+        const isHome = dropTarget && dropTarget.style.display !== 'none'
         if (isHome && !globalThis.reader?.view) {
-            headerBar.style.visibility = 'hidden';
+            headerBar.style.visibility = 'hidden'
         } else {
-            headerBar.style.visibility = 'visible';
+            headerBar.style.visibility = 'visible'
         }
     }
 
-    let displayMembers = (members && members.length > 0) ? members : [];
+    let displayMembers = (members && members.length > 0) ? members : []
     if (displayMembers.length === 0) {
-        const uId = myId || myDiscordId || 'local_me';
-        const uName = myName || (currentUser ? currentUser.username : 'You');
-        const uAvatar = myAvatarUrl || (currentUser ? (currentUser.avatar_url || (currentUser.avatar ? `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png` : null)) : null);
+        const uId = myId || myDiscordId || 'local_me'
+        const uName = myName || (currentUser ? currentUser.username : 'You')
+        const uAvatar = myAvatarUrl || (currentUser ? (currentUser.avatar_url || (currentUser.avatar ? `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png` : null)) : null)
         displayMembers = [{
             id: uId,
             name: uName,
             avatarUrl: uAvatar,
             color: myColor || '#6366f1',
-            online: true
-        }];
+            online: true,
+        }]
     }
 
-    pill.innerHTML = '';
-    pill.style.display = 'flex';
+    pill.innerHTML = ''
+    pill.style.display = 'flex'
 
     if (displayMembers.length === 1) {
-        pill.classList.add('single-member');
+        pill.classList.add('single-member')
     } else {
-        pill.classList.remove('single-member');
+        pill.classList.remove('single-member')
     }
 
-    const STACK_LIMIT = 4;
+    const STACK_LIMIT = 4
 
     displayMembers.forEach((member, index) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'bc-pill-avatar-wrapper';
+        const wrapper = document.createElement('div')
+        wrapper.className = 'bc-pill-avatar-wrapper'
         if (index >= STACK_LIMIT) {
-            wrapper.classList.add('expanded-only');
+            wrapper.classList.add('expanded-only')
         }
 
         // Determine border color: gray if offline/alone, user's color if online
-        const isOnline = member.online !== false;
-        const borderColor = isOnline ? (member.color || '#6366f1') : '#71717a';
+        const isOnline = member.online !== false
+        const borderColor = isOnline ? (member.color || '#6366f1') : '#71717a'
 
-        let avatarEl;
+        let avatarEl
         if (member.avatarUrl) {
-            const img = document.createElement('img');
-            img.className = 'bc-pill-avatar';
-            img.src = member.avatarUrl;
-            img.alt = member.name;
-            img.style.borderColor = borderColor;
+            const img = document.createElement('img')
+            img.className = 'bc-pill-avatar'
+            img.src = member.avatarUrl
+            img.alt = member.name
+            img.style.borderColor = borderColor
             img.onerror = () => {
-                img.replaceWith(makeColorDot(member, borderColor));
-            };
-            avatarEl = img;
+                img.replaceWith(makeColorDot(member, borderColor))
+            }
+            avatarEl = img
         } else {
-            avatarEl = makeColorDot(member, borderColor);
+            avatarEl = makeColorDot(member, borderColor)
         }
-        wrapper.appendChild(avatarEl);
+        wrapper.appendChild(avatarEl)
 
         // Tooltip dropping below avatar with name & dot
-        const tooltip = document.createElement('div');
-        tooltip.className = 'bc-avatar-tooltip';
-        
-        const dot = document.createElement('span');
-        dot.style.width = '8px';
-        dot.style.height = '8px';
-        dot.style.borderRadius = '50%';
-        dot.style.backgroundColor = borderColor;
-        dot.style.display = 'inline-block';
-        
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = member.name;
+        const tooltip = document.createElement('div')
+        tooltip.className = 'bc-avatar-tooltip'
 
-        tooltip.appendChild(dot);
-        tooltip.appendChild(nameSpan);
-        wrapper.appendChild(tooltip);
+        const dot = document.createElement('span')
+        dot.style.width = '8px'
+        dot.style.height = '8px'
+        dot.style.borderRadius = '50%'
+        dot.style.backgroundColor = borderColor
+        dot.style.display = 'inline-block'
+
+        const nameSpan = document.createElement('span')
+        nameSpan.textContent = member.name
+
+        tooltip.appendChild(dot)
+        tooltip.appendChild(nameSpan)
+        wrapper.appendChild(tooltip)
 
         // Click handler to show user action context menu with auto-close & click-outside support
         wrapper.addEventListener('click', (e) => {
-            e.stopPropagation();
+            e.stopPropagation()
 
             if (openUserMenu) {
-                if (openUserMenu._timer) clearTimeout(openUserMenu._timer);
+                if (openUserMenu._timer) clearTimeout(openUserMenu._timer)
                 if (openUserMenu._clickOutsideHandler) {
-                    document.removeEventListener('click', openUserMenu._clickOutsideHandler);
+                    document.removeEventListener('click', openUserMenu._clickOutsideHandler)
                 }
-                openUserMenu.remove();
-                openUserMenu = null;
+                openUserMenu.remove()
+                openUserMenu = null
             }
 
-            const menu = document.createElement('div');
-            menu.className = 'bc-user-context-menu';
+            const menu = document.createElement('div')
+            menu.className = 'bc-user-context-menu'
 
             const closeMenu = () => {
-                if (menu._timer) clearTimeout(menu._timer);
+                if (menu._timer) clearTimeout(menu._timer)
                 if (menu._clickOutsideHandler) {
-                    document.removeEventListener('click', menu._clickOutsideHandler);
+                    document.removeEventListener('click', menu._clickOutsideHandler)
                 }
-                menu.remove();
-                if (openUserMenu === menu) openUserMenu = null;
-            };
+                menu.remove()
+                if (openUserMenu === menu) openUserMenu = null
+            }
 
             // Auto-close menu after 4 seconds of inactivity
             const resetAutoCloseTimer = () => {
-                if (menu._timer) clearTimeout(menu._timer);
-                menu._timer = setTimeout(closeMenu, 4000);
-            };
-            resetAutoCloseTimer();
+                if (menu._timer) clearTimeout(menu._timer)
+                menu._timer = setTimeout(closeMenu, 4000)
+            }
+            resetAutoCloseTimer()
 
-            menu.addEventListener('mousemove', resetAutoCloseTimer);
-            menu.addEventListener('click', (evt) => evt.stopPropagation());
+            menu.addEventListener('mousemove', resetAutoCloseTimer)
+            menu.addEventListener('click', (evt) => evt.stopPropagation())
 
             const clickOutsideHandler = (evt) => {
                 if (!menu.contains(evt.target)) {
-                    closeMenu();
+                    closeMenu()
                 }
-            };
-            menu._clickOutsideHandler = clickOutsideHandler;
+            }
+            menu._clickOutsideHandler = clickOutsideHandler
 
-            const isMe = member.id === myId || member.id === myDiscordId || member.id === 'local_me';
+            const isMe = member.id === myId || member.id === myDiscordId || member.id === 'local_me'
 
-            const header = document.createElement('div');
-            header.className = 'bc-user-menu-header';
-            header.textContent = isMe ? `${member.name} (You)` : member.name;
-            menu.appendChild(header);
+            const header = document.createElement('div')
+            header.className = 'bc-user-menu-header'
+            header.textContent = isMe ? `${member.name} (You)` : member.name
+            menu.appendChild(header)
 
             // Teleport / Jump to location button
             if (member.cfi) {
-                const teleBtn = document.createElement('button');
-                teleBtn.className = 'bc-user-menu-btn';
+                const teleBtn = document.createElement('button')
+                teleBtn.className = 'bc-user-menu-btn'
                 teleBtn.innerHTML = `
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
                     </svg>
                     Go to location
-                `;
+                `
                 teleBtn.addEventListener('click', () => {
-                    teleportToMember(member.id);
-                    closeMenu();
-                });
-                menu.appendChild(teleBtn);
+                    if (member.cfi && globalThis.reader?.view) {
+                        globalThis.reader.view.goTo(member.cfi)
+                    }
+                    closeMenu()
+                })
+                menu.appendChild(teleBtn)
             }
 
             // Remove User button (only for OTHER users, never for yourself)
             if (!isMe) {
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'bc-user-menu-btn remove';
+                const removeBtn = document.createElement('button')
+                removeBtn.className = 'bc-user-menu-btn remove'
                 removeBtn.innerHTML = `
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                     </svg>
                     Remove User
-                `;
+                `
                 removeBtn.addEventListener('click', () => {
-                    closeMenu();
-                    confirmRemoveUser(member);
-                });
-                menu.appendChild(removeBtn);
+                    closeMenu()
+                    confirmRemoveUser(member)
+                })
+                menu.appendChild(removeBtn)
             }
 
-            wrapper.appendChild(menu);
-            openUserMenu = menu;
+            wrapper.appendChild(menu)
+            openUserMenu = menu
 
             setTimeout(() => {
-                document.addEventListener('click', clickOutsideHandler);
-            }, 0);
-        });
+                document.addEventListener('click', clickOutsideHandler)
+            }, 0)
+        })
 
-        pill.appendChild(wrapper);
-    });
+        pill.appendChild(wrapper)
+    })
 
     // Plus N badge for 5+ members when collapsed
     if (members.length > STACK_LIMIT) {
-        const extraCount = members.length - STACK_LIMIT;
-        const extraSpan = document.createElement('div');
-        extraSpan.className = 'bc-pill-extra';
-        extraSpan.textContent = `+${extraCount}`;
-        pill.appendChild(extraSpan);
+        const extraCount = members.length - STACK_LIMIT
+        const extraSpan = document.createElement('div')
+        extraSpan.className = 'bc-pill-extra'
+        extraSpan.textContent = `+${extraCount}`
+        pill.appendChild(extraSpan)
     }
 }
 
 function confirmRemoveUser(member) {
-    const isSelf = currentUser && member.id === currentUser.id;
-    const msg = isSelf ? "Do you want to leave this reading room?" : `Remove ${member.name} from this reading room?`;
+    const isSelf = currentUser && member.id === currentUser.id
+    const msg = isSelf ? 'Do you want to leave this reading room?' : `Remove ${member.name} from this reading room?`
     if (confirm(msg)) {
         if (isSelf) {
             if (typeof globalThis.leaveBookClubAndGoHome === 'function') {
-                globalThis.leaveBookClubAndGoHome();
+                globalThis.leaveBookClubAndGoHome()
             }
         } else {
-            delete activeMembers[member.id];
-            renderMembersPill();
-            const membersList = $('#bc-members-list');
+            delete activeMembers[member.id]
+            renderMembersPill()
+            const membersList = $('#bc-members-list')
             if (membersList) {
-                const item = membersList.querySelector(`[data-user-id="${member.id}"]`);
-                if (item) item.remove();
+                const item = membersList.querySelector(`[data-user-id="${member.id}"]`)
+                if (item) item.remove()
             }
-            if (typeof showToast === 'function') {
-                showToast(`${member.name} was removed.`);
+            if (typeof globalThis.showToast === 'function') {
+                globalThis.showToast(`${member.name} was removed.`)
             }
         }
     }
 }
 
 function makeColorDot(member, borderColor) {
-    const dot = document.createElement('div');
-    dot.className = 'bc-pill-avatar';
-    dot.style.backgroundColor = member.color || '#6366f1';
-    dot.style.borderColor = borderColor || '#71717a';
-    dot.title = member.name;
-    dot.style.display = 'flex';
-    dot.style.alignItems = 'center';
-    dot.style.justifyContent = 'center';
-    dot.style.fontSize = '0.65rem';
-    dot.style.fontWeight = '700';
-    dot.style.color = '#fff';
-    dot.style.fontFamily = 'system-ui, sans-serif';
-    dot.textContent = (member.name || '?')[0].toUpperCase();
-    return dot;
+    const dot = document.createElement('div')
+    dot.className = 'bc-pill-avatar'
+    dot.style.backgroundColor = member.color || '#6366f1'
+    dot.style.borderColor = borderColor || '#71717a'
+    dot.title = member.name
+    dot.style.display = 'flex'
+    dot.style.alignItems = 'center'
+    dot.style.justifyContent = 'center'
+    dot.style.fontSize = '0.65rem'
+    dot.style.fontWeight = '700'
+    dot.style.color = '#fff'
+    dot.style.fontFamily = 'system-ui, sans-serif'
+    dot.textContent = (member.name || '?')[0].toUpperCase()
+    return dot
 }
 
 
 function renderAllHighlights() {
     for (const highlight of Object.values(activeHighlights)) {
-        drawHighlightOnView(highlight);
+        drawHighlightOnView(highlight)
     }
 }
 
 // Selection menu
 function createFloatingMenu() {
-    if (selectionMenu) return;
+    if (selectionMenu) return
 
-    selectionMenu = document.createElement('div');
-    selectionMenu.className = 'bc-selection-menu';
-    selectionMenu.style.display = 'none';
+    selectionMenu = document.createElement('div')
+    selectionMenu.className = 'bc-selection-menu'
+    selectionMenu.style.display = 'none'
 
-    const highlightBtn = document.createElement('button');
-    highlightBtn.id = 'bc-floating-highlight-btn';
-    highlightBtn.className = 'bc-menu-btn bc-menu-btn-primary';
-    highlightBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9.62 12L12 4.67 14.38 12H9.62zM11 2L5.5 18H8l1.12-3h5.76L16 18h2.5L13 2h-2z"/></svg> Highlight`;
+    const highlightBtn = document.createElement('button')
+    highlightBtn.id = 'bc-floating-highlight-btn'
+    highlightBtn.className = 'bc-menu-btn bc-menu-btn-primary'
+    highlightBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9.62 12L12 4.67 14.38 12H9.62zM11 2L5.5 18H8l1.12-3h5.76L16 18h2.5L13 2h-2z"/></svg> Highlight'
     highlightBtn.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        executeHighlight();
-    });
+        e.preventDefault()
+        executeHighlight()
+    })
 
-    const commentBtn = document.createElement('button');
-    commentBtn.id = 'bc-floating-comment-btn';
-    commentBtn.className = 'bc-menu-btn';
-    commentBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg> Comment`;
-    commentBtn.style.borderLeft = '1px solid rgba(128, 128, 128, 0.3)';
+    const commentBtn = document.createElement('button')
+    commentBtn.id = 'bc-floating-comment-btn'
+    commentBtn.className = 'bc-menu-btn'
+    commentBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg> Comment'
+    commentBtn.style.borderLeft = '1px solid rgba(128, 128, 128, 0.3)'
     commentBtn.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        executeComment();
-    });
+        e.preventDefault()
+        executeComment()
+    })
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'bc-menu-btn bc-menu-btn-ghost';
-    cancelBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+    const cancelBtn = document.createElement('button')
+    cancelBtn.className = 'bc-menu-btn bc-menu-btn-ghost'
+    cancelBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
     cancelBtn.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        hideSelectionMenu();
-    });
+        e.preventDefault()
+        hideSelectionMenu()
+    })
 
-    selectionMenu.appendChild(highlightBtn);
-    selectionMenu.appendChild(commentBtn);
-    selectionMenu.appendChild(cancelBtn);
-    document.body.appendChild(selectionMenu);
+    selectionMenu.appendChild(highlightBtn)
+    selectionMenu.appendChild(commentBtn)
+    selectionMenu.appendChild(cancelBtn)
+    document.body.appendChild(selectionMenu)
 }
 
-let lastSelectionDetails = null;
+let lastSelectionDetails = null
 
 function handleTextSelection(doc, index, event) {
-    const selection = doc.defaultView.getSelection();
+    const selection = doc.defaultView.getSelection()
     if (!selection || selection.isCollapsed) {
         // Only hide if we clicked outside selectionMenu
-        if (event && event.target.closest && event.target.closest('.bc-selection-menu')) return;
-        hideSelectionMenu();
-        return;
+        if (event && event.target.closest && event.target.closest('.bc-selection-menu')) return
+        hideSelectionMenu()
+        return
     }
 
-    const selectedText = selection.toString().trim();
+    const selectedText = selection.toString().trim()
     if (selectedText.length === 0) {
-        hideSelectionMenu();
-        return;
+        hideSelectionMenu()
+        return
     }
 
     try {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        const iframe = doc.defaultView.frameElement;
-        
-        if (!iframe) return;
-        
-        const iframeRect = iframe.getBoundingClientRect();
-        const parentTop = iframeRect.top + rect.top + window.scrollY;
-        const parentLeft = iframeRect.left + rect.left + window.scrollX;
+        const range = selection.getRangeAt(0)
+        const rect = range.getBoundingClientRect()
+        const iframe = doc.defaultView.frameElement
+
+        if (!iframe) return
+
+        const iframeRect = iframe.getBoundingClientRect()
+        const parentTop = iframeRect.top + rect.top + window.scrollY
+        const parentLeft = iframeRect.left + rect.left + window.scrollX
 
         lastSelectionDetails = {
             doc,
             index,
             range: range.cloneRange(),
-            text: selectedText
-        };
+            text: selectedText,
+        }
 
         // Position menu above selection
-        createFloatingMenu();
-        selectionMenu.style.top = `${parentTop - 45}px`;
-        selectionMenu.style.left = `${parentLeft}px`;
-        selectionMenu.style.display = 'flex';
+        createFloatingMenu()
+        selectionMenu.style.top = `${parentTop - 45}px`
+        selectionMenu.style.left = `${parentLeft}px`
+        selectionMenu.style.display = 'flex'
 
         // Style the buttons dynamically with user's current color
-        const highlightBtn = $('#bc-floating-highlight-btn');
+        const highlightBtn = $('#bc-floating-highlight-btn')
         if (highlightBtn) {
-            highlightBtn.style.backgroundColor = myColor;
-            highlightBtn.style.color = '#ffffff';
+            highlightBtn.style.backgroundColor = myColor
+            highlightBtn.style.color = '#ffffff'
         }
-        const commentBtn = $('#bc-floating-comment-btn');
+        const commentBtn = $('#bc-floating-comment-btn')
         if (commentBtn) {
-            commentBtn.style.color = myColor;
+            commentBtn.style.color = myColor
         }
     } catch (e) {
-        console.error('[Book Club] Text selection error:', e);
+        console.error('[Book Club] Text selection error:', e)
     }
 }
 
 function hideSelectionMenu() {
-    if (selectionMenu) selectionMenu.style.display = 'none';
-    lastSelectionDetails = null;
+    if (selectionMenu) selectionMenu.style.display = 'none'
+    lastSelectionDetails = null
 }
 
 function executeHighlight() {
-    if (!lastSelectionDetails || !ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!lastSelectionDetails || !ws || ws.readyState !== WebSocket.OPEN) return
 
-    const { index, range, text } = lastSelectionDetails;
+    const { index, range, text } = lastSelectionDetails
     try {
-        const cfi = globalThis.reader.view.getCFI(index, range);
-        
+        const cfi = globalThis.reader.view.getCFI(index, range)
+
         ws.send(JSON.stringify({
             type: 'add_highlight',
             cfi,
             text,
-            highlightColor: myColor  // always use the user's own color
-        }));
-        
+            highlightColor: myColor,  // always use the user's own color
+        }))
+
         // Deselect
-        const selection = lastSelectionDetails.doc.defaultView.getSelection();
-        if (selection) selection.removeAllRanges();
+        const selection = lastSelectionDetails.doc.defaultView.getSelection()
+        if (selection) selection.removeAllRanges()
     } catch (e) {
-        console.error('[Book Club] Failed to extract CFI:', e);
+        console.error('[Book Club] Failed to extract CFI:', e)
     }
-    
-    hideSelectionMenu();
+
+    hideSelectionMenu()
 }
 
 function executeComment() {
-    if (!lastSelectionDetails || !ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!lastSelectionDetails || !ws || ws.readyState !== WebSocket.OPEN) return
 
-    const { index, range, text } = lastSelectionDetails;
+    const { index, range, text } = lastSelectionDetails
     try {
-        const cfi = globalThis.reader.view.getCFI(index, range);
-        
-        // Hide selection menu and show comment composer at the selection rect position
-        const iframe = lastSelectionDetails.doc.defaultView.frameElement;
-        const rect = range.getBoundingClientRect();
-        const iframeRect = iframe.getBoundingClientRect();
-        const parentTop = iframeRect.top + rect.top + window.scrollY;
-        const parentLeft = iframeRect.left + rect.left + window.scrollX;
-        
-        // Deselect
-        const selection = lastSelectionDetails.doc.defaultView.getSelection();
-        if (selection) selection.removeAllRanges();
+        const cfi = globalThis.reader.view.getCFI(index, range)
 
-        hideSelectionMenu();
-        showFloatingComposer(cfi, text, parentTop, parentLeft);
+        // Hide selection menu and show comment composer at the selection rect position
+        const iframe = lastSelectionDetails.doc.defaultView.frameElement
+        const rect = range.getBoundingClientRect()
+        const iframeRect = iframe.getBoundingClientRect()
+        const parentTop = iframeRect.top + rect.top + window.scrollY
+        const parentLeft = iframeRect.left + rect.left + window.scrollX
+
+        // Deselect
+        const selection = lastSelectionDetails.doc.defaultView.getSelection()
+        if (selection) selection.removeAllRanges()
+
+        hideSelectionMenu()
+        showFloatingComposer(cfi, text, parentTop, parentLeft)
     } catch (e) {
-        console.error('[Book Club] Failed to extract CFI:', e);
-        hideSelectionMenu();
+        console.error('[Book Club] Failed to extract CFI:', e)
+        hideSelectionMenu()
     }
 }
 
 // Floating Composer Popover UI (to enter single note)
 function showFloatingComposer(cfi, highlightText, top, left) {
-    if (floatingComposer) floatingComposer.remove();
+    if (floatingComposer) floatingComposer.remove()
 
-    floatingComposer = document.createElement('div');
-    floatingComposer.className = 'bc-floating-composer';
-    floatingComposer.style.top = `${top - 140}px`;
-    floatingComposer.style.left = `${left}px`;
-    floatingComposer.style.setProperty('--my-color', myColor);
+    floatingComposer = document.createElement('div')
+    floatingComposer.className = 'bc-floating-composer'
+    floatingComposer.style.top = `${top - 140}px`
+    floatingComposer.style.left = `${left}px`
+    floatingComposer.style.setProperty('--my-color', myColor)
 
-    const textarea = document.createElement('textarea');
-    textarea.placeholder = 'Write a comment / note about this passage...';
+    const textarea = document.createElement('textarea')
+    textarea.placeholder = 'Write a comment / note about this passage...'
     textarea.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendBtn.click();
+            e.preventDefault()
+            sendBtn.click()
         }
-    });
+    })
 
-    const actions = document.createElement('div');
-    actions.className = 'bc-composer-actions';
+    const actions = document.createElement('div')
+    actions.className = 'bc-composer-actions'
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'bc-btn bc-btn-sm bc-btn-ghost';
-    cancelBtn.innerText = 'Cancel';
+    const cancelBtn = document.createElement('button')
+    cancelBtn.className = 'bc-btn bc-btn-sm bc-btn-ghost'
+    cancelBtn.innerText = 'Cancel'
     cancelBtn.addEventListener('click', () => {
-        hideFloatingComposer();
-    });
+        hideFloatingComposer()
+    })
 
-    const sendBtn = document.createElement('button');
-    sendBtn.className = 'bc-btn bc-btn-sm bc-btn-primary';
-    sendBtn.innerText = 'Save';
-    sendBtn.style.backgroundColor = myColor;
-    sendBtn.style.color = '#ffffff';
+    const sendBtn = document.createElement('button')
+    sendBtn.className = 'bc-btn bc-btn-sm bc-btn-primary'
+    sendBtn.innerText = 'Save'
+    sendBtn.style.backgroundColor = myColor
+    sendBtn.style.color = '#ffffff'
     sendBtn.addEventListener('click', () => {
-        const val = textarea.value.trim();
-        if (!val) return;
+        const val = textarea.value.trim()
+        if (!val) return
 
         // Send highlight message WITH the note directly
         ws.send(JSON.stringify({
@@ -1294,412 +1298,412 @@ function showFloatingComposer(cfi, highlightText, top, left) {
             cfi,
             text: highlightText,
             highlightColor: myColor,
-            note: val
-        }));
+            note: val,
+        }))
 
-        hideFloatingComposer();
-    });
+        hideFloatingComposer()
+    })
 
-    actions.appendChild(cancelBtn);
-    actions.appendChild(sendBtn);
+    actions.appendChild(cancelBtn)
+    actions.appendChild(sendBtn)
 
-    floatingComposer.appendChild(textarea);
-    floatingComposer.appendChild(actions);
-    document.body.appendChild(floatingComposer);
+    floatingComposer.appendChild(textarea)
+    floatingComposer.appendChild(actions)
+    document.body.appendChild(floatingComposer)
 
-    textarea.focus();
+    textarea.focus()
 }
 
 function hideFloatingComposer() {
     if (floatingComposer) {
-        floatingComposer.remove();
-        floatingComposer = null;
+        floatingComposer.remove()
+        floatingComposer = null
     }
 }
 
 // Hover Popover showing highlights
 function showHoverCommentsPopover(cfi, range, iframe, e) {
-    clearTimeout(hoverPopoverTimeout);
-    
-    const highlight = activeHighlights[cfi];
-    if (!highlight) return;
+    clearTimeout(hoverPopoverTimeout)
+
+    const highlight = activeHighlights[cfi]
+    if (!highlight) return
 
     if (!hoverPopover) {
-        hoverPopover = document.createElement('div');
-        hoverPopover.className = 'bc-hover-popover';
-        
+        hoverPopover = document.createElement('div')
+        hoverPopover.className = 'bc-hover-popover'
+
         hoverPopover.addEventListener('mouseenter', () => {
-            isMouseOverPopover = true;
-        });
+            isMouseOverPopover = true
+        })
         hoverPopover.addEventListener('mouseleave', () => {
-            isMouseOverPopover = false;
-            hideHoverCommentsPopover();
-        });
-        document.body.appendChild(hoverPopover);
+            isMouseOverPopover = false
+            hideHoverCommentsPopover()
+        })
+        document.body.appendChild(hoverPopover)
     }
 
-    hoverPopover.dataset.cfi = cfi;
+    hoverPopover.dataset.cfi = cfi
 
     // Get position relative to viewport
-    const rect = range.getBoundingClientRect();
-    const iframeRect = iframe.getBoundingClientRect();
-    const top = iframeRect.top + rect.top + window.scrollY;
-    const left = iframeRect.left + rect.left + window.scrollX;
+    const rect = range.getBoundingClientRect()
+    const iframeRect = iframe.getBoundingClientRect()
+    const top = iframeRect.top + rect.top + window.scrollY
+    const left = iframeRect.left + rect.left + window.scrollX
 
-    hoverPopover.style.top = `${top - hoverPopover.offsetHeight - 10}px`;
-    hoverPopover.style.left = `${left}px`;
-    
-    const isOwner = highlight.userName === myName;
+    hoverPopover.style.top = `${top - hoverPopover.offsetHeight - 10}px`
+    hoverPopover.style.left = `${left}px`
+
+    const isOwner = highlight.userName === myName
 
     // Render contents (Header, Highlight Quote, Note, Delete button)
     hoverPopover.innerHTML = `
         <div class="bc-popover-header">
             <span class="bc-popover-author-dot" style="background-color: ${highlight.userColor || 'gray'};"></span>
             <span class="bc-popover-author">${highlight.userName}</span>
-            ${isOwner ? `<button class="bc-popover-delete-btn" title="Delete Highlight">✕</button>` : ''}
+            ${isOwner ? '<button class="bc-popover-delete-btn" title="Delete Highlight">✕</button>' : ''}
         </div>
         <div class="bc-popover-quote">"${highlight.text}"</div>
         ${highlight.note ? `<div class="bc-popover-note" style="--bc-highlight-color: ${highlight.highlightColor || 'gray'}">${highlight.note}</div>` : ''}
-    `;
+    `
 
     // Wire up delete button if present
-    const deleteBtn = hoverPopover.querySelector('.bc-popover-delete-btn');
+    const deleteBtn = hoverPopover.querySelector('.bc-popover-delete-btn')
     if (deleteBtn) {
         deleteBtn.addEventListener('click', () => {
             if (confirm('Are you sure you want to delete this highlight?')) {
                 ws.send(JSON.stringify({
                     type: 'delete_highlight',
-                    cfi
-                }));
-                hideHoverCommentsPopover();
+                    cfi,
+                }))
+                hideHoverCommentsPopover()
             }
-        });
+        })
     }
 
-    hoverPopover.style.display = 'flex';
+    hoverPopover.style.display = 'flex'
     // Trigger fade in animation
     setTimeout(() => {
-        hoverPopover.classList.add('show');
+        hoverPopover.classList.add('show')
         // Reposition correctly since height might have changed after rendering
-        hoverPopover.style.top = `${top - hoverPopover.offsetHeight - 10}px`;
-    }, 10);
+        hoverPopover.style.top = `${top - hoverPopover.offsetHeight - 10}px`
+    }, 10)
 }
 
 function hideHoverCommentsPopover() {
-    clearTimeout(hoverPopoverTimeout);
+    clearTimeout(hoverPopoverTimeout)
     hoverPopoverTimeout = setTimeout(() => {
         if (hoverPopover && !isMouseOverPopover) {
-            hoverPopover.classList.remove('show');
+            hoverPopover.classList.remove('show')
             setTimeout(() => {
                 if (hoverPopover && !hoverPopover.classList.contains('show')) {
-                    hoverPopover.style.display = 'none';
+                    hoverPopover.style.display = 'none'
                 }
-            }, 180);
+            }, 180)
         }
-    }, 200);
+    }, 200)
 }
 
 
 // Inject highlight rendering in Foliate
 async function drawHighlightOnView(highlight) {
-    const reader = globalThis.reader;
-    if (!reader || !reader.view) return;
+    const reader = globalThis.reader
+    if (!reader || !reader.view) return
 
     try {
-        const { index } = await reader.view.resolveNavigation(highlight.cfi);
+        const { index } = await reader.view.resolveNavigation(highlight.cfi)
         const annotation = {
             value: highlight.cfi,
             color: highlight.highlightColor || highlight.userColor || '#FFD700',
             userName: highlight.userName,
-            note: highlight.note // Save the note directly in the annotation
-        };
+            note: highlight.note, // Save the note directly in the annotation
+        }
 
         // Cache in reader
         if (!reader.annotations.has(index)) {
-            reader.annotations.set(index, []);
+            reader.annotations.set(index, [])
         }
-        
+
         // Avoid duplicate annotations
-        const list = reader.annotations.get(index);
-        const exists = list.some(a => a.value === highlight.cfi);
+        const list = reader.annotations.get(index)
+        const exists = list.some(a => a.value === highlight.cfi)
         if (!exists) {
-            list.push(annotation);
-            reader.annotationsByValue.set(highlight.cfi, annotation);
-            await reader.view.addAnnotation(annotation);
+            list.push(annotation)
+            reader.annotationsByValue.set(highlight.cfi, annotation)
+            await reader.view.addAnnotation(annotation)
         }
     } catch (e) {
-        console.error('[Book Club] Error rendering highlight:', e);
+        console.error('[Book Club] Error rendering highlight:', e)
     }
 }
 
 async function removeHighlightFromView(cfi) {
-    const reader = globalThis.reader;
-    if (!reader || !reader.view) return;
+    const reader = globalThis.reader
+    if (!reader || !reader.view) return
 
     try {
-        const { index } = await reader.view.resolveNavigation(cfi);
-        const annotation = reader.annotationsByValue.get(cfi);
+        const { index } = await reader.view.resolveNavigation(cfi)
+        const annotation = reader.annotationsByValue.get(cfi)
         if (annotation) {
-            await reader.view.deleteAnnotation(annotation);
-            reader.annotationsByValue.delete(cfi);
-            
-            const list = reader.annotations.get(index);
+            await reader.view.deleteAnnotation(annotation)
+            reader.annotationsByValue.delete(cfi)
+
+            const list = reader.annotations.get(index)
             if (list) {
-                reader.annotations.set(index, list.filter(a => a.value !== cfi));
+                reader.annotations.set(index, list.filter(a => a.value !== cfi))
             }
         }
     } catch (e) {
-        console.error('[Book Club] Error removing highlight:', e);
+        console.error('[Book Club] Error removing highlight:', e)
     }
 }
 
 window.addEventListener('book-opened', async ({ detail: reader }) => {
-    console.log('[Book Club] Book opened hook initialized');
-    hideLoading();
-    
+    console.log('[Book Club] Book opened hook initialized')
+    hideLoading()
+
     if (roomId) {
         // If reupload panel is visible, upload the book to restore it on the server
-        const reuploadPanel = $('#bc-reupload-panel');
-        const isReuploadActive = reuploadPanel && reuploadPanel.style.display === 'block';
+        const reuploadPanel = $('#bc-reupload-panel')
+        const isReuploadActive = reuploadPanel && reuploadPanel.style.display === 'block'
 
         if (isReuploadActive && reader.currentFile) {
-            console.log('[Book Club] Expired room session active. Restoring book on server...');
-            const formData = new FormData();
-            formData.append('book', reader.currentFile);
-            
+            console.log('[Book Club] Expired room session active. Restoring book on server...')
+            const formData = new FormData()
+            formData.append('book', reader.currentFile)
+
             try {
                 const res = await fetch(`/api/rooms/${roomId}/reupload`, {
                     method: 'POST',
-                    body: formData
-                });
+                    body: formData,
+                })
                 if (res.ok) {
-                    console.log('[Book Club] Room restored on server successfully.');
+                    console.log('[Book Club] Room restored on server successfully.')
                 } else {
-                    console.error('[Book Club] Failed to restore room on server.');
+                    console.error('[Book Club] Failed to restore room on server.')
                 }
             } catch (err) {
-                console.error('[Book Club] Error restoring room:', err);
+                console.error('[Book Club] Error restoring room:', err)
             } finally {
-                hideLoading();
+                hideLoading()
             }
         }
 
-        showRoomPanel();
-        connectWebSocket();
-        
+        showRoomPanel()
+        connectWebSocket()
+
         // Wait a small moment to ensure reader.view is ready before rendering existing highlights
         setTimeout(() => {
-            renderAllHighlights();
-        }, 100);
+            renderAllHighlights()
+        }, 100)
     } else {
-        showSetupPanel();
+        showSetupPanel()
     }
-    
+
     // Listen for progress changes (relocate event)
     reader.view.addEventListener('relocate', (e) => {
-        resetIdleTimer();
-        hideFloatingComposer();
+        resetIdleTimer()
+        hideFloatingComposer()
         // Hide hover popover instantly (bypass timeout/hover state)
         if (hoverPopover) {
-            hoverPopover.classList.remove('show');
-            hoverPopover.style.display = 'none';
+            hoverPopover.classList.remove('show')
+            hoverPopover.style.display = 'none'
         }
 
-        const { cfi, fraction, tocItem } = e.detail;
-        const chapter = tocItem?.label || '';
+        const { cfi, fraction, tocItem } = e.detail
+        const chapter = tocItem?.label || ''
 
         // Update self locally so sidebar % is immediate
         if (myId && activeMembers[myId]) {
-            activeMembers[myId].cfi = cfi;
-            activeMembers[myId].fraction = fraction;
-            activeMembers[myId].chapter = chapter;
-            renderMembersList();
+            activeMembers[myId].cfi = cfi
+            activeMembers[myId].fraction = fraction
+            activeMembers[myId].chapter = chapter
+            renderMembersList()
         }
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({
                 type: 'relocate',
                 cfi,
                 fraction,
-                chapter
-            }));
+                chapter,
+            }))
         }
-    });
+    })
 
     // Listen for section document load event to inject text selection and hover listeners
     reader.view.addEventListener('load', ({ detail: { doc, index } }) => {
-        console.log(`[Book Club] Loaded section ${index}. Injecting selection/hover handlers.`);
-        currentSectionIndex = index; // Track current loaded section index for cursor visibility filter
-        
+        console.log(`[Book Club] Loaded section ${index}. Injecting selection/hover handlers.`)
+        currentSectionIndex = index // Track current loaded section index for cursor visibility filter
+
         // Reset idle timer on iframe interaction
-        const iframeEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart'];
+        const iframeEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart']
         iframeEvents.forEach(evt => {
-            doc.addEventListener(evt, resetIdleTimer, { passive: true });
-        });
+            doc.addEventListener(evt, resetIdleTimer, { passive: true })
+        })
 
         // Selection change listener
         doc.addEventListener('mouseup', (event) => {
-            handleTextSelection(doc, index, event);
-        });
+            handleTextSelection(doc, index, event)
+        })
 
         doc.addEventListener('keyup', (event) => {
-            handleTextSelection(doc, index, event);
-        });
+            handleTextSelection(doc, index, event)
+        })
 
         doc.addEventListener('mousedown', (event) => {
-            sendMouseMove(event, true, doc);
-        });
+            sendMouseMove(event, true, doc)
+        })
 
         // Mouse hover over highlighted text inside doc to open comment popover
         doc.addEventListener('mousemove', (e) => {
-            sendMouseMove(e, true, doc); // Send mouse coordinates to peers
+            sendMouseMove(e, true, doc) // Send mouse coordinates to peers
 
             const overlayerObj = globalThis.reader?.view?.renderer?.getContents()
-                ?.find(x => x.index === index && x.overlayer);
+                ?.find(x => x.index === index && x.overlayer)
             if (overlayerObj?.overlayer) {
-                const [cfi, range] = overlayerObj.overlayer.hitTest({ x: e.clientX, y: e.clientY });
+                const [cfi, range] = overlayerObj.overlayer.hitTest({ x: e.clientX, y: e.clientY })
                 if (cfi && !cfi.startsWith('search-') && activeHighlights[cfi]) {
-                    showHoverCommentsPopover(cfi, range, overlayerObj.doc.defaultView.frameElement, e);
+                    showHoverCommentsPopover(cfi, range, overlayerObj.doc.defaultView.frameElement, e)
                 } else {
-                    hideHoverCommentsPopover();
+                    hideHoverCommentsPopover()
                 }
             } else {
-                hideHoverCommentsPopover();
+                hideHoverCommentsPopover()
             }
-        });
-    });
+        })
+    })
 
     // Intercept show-annotation event (highlight clicked)
     reader.view.addEventListener('show-annotation', (e) => {
-        const cfi = e.detail?.value ?? e.detail?.annotation?.value;
+        const cfi = e.detail?.value ?? e.detail?.annotation?.value
         if (cfi && activeHighlights[cfi]) {
             // Find overlayer of current page to get iframe frame element
             const overlayerObj = globalThis.reader?.view?.renderer?.getContents()
-                ?.find(x => x.overlayer);
+                ?.find(x => x.overlayer)
             if (overlayerObj?.overlayer && e.detail.range) {
-                showHoverCommentsPopover(cfi, e.detail.range, overlayerObj.doc.defaultView.frameElement);
+                showHoverCommentsPopover(cfi, e.detail.range, overlayerObj.doc.defaultView.frameElement)
             }
         }
-    });
+    })
 
     // draw-annotation: render the highlight with the stored color
     reader.view.addEventListener('draw-annotation', e => {
-        const { draw, annotation } = e.detail;
-        const color = annotation.color || '#FFD700';
-        
+        const { draw, annotation } = e.detail
+        const color = annotation.color || '#FFD700'
+
         // Use native Overlayer.highlight from overlayer.js module
         if (Overlayer?.highlight) {
-            draw(Overlayer.highlight, { color });
+            draw(Overlayer.highlight, { color })
         } else {
             draw((el) => {
-                el.style.backgroundColor = color;
-                el.style.opacity = '0.35';
-                el.style.borderRadius = '2px';
-                el.style.cursor = 'pointer';
-            }, { color });
+                el.style.backgroundColor = color
+                el.style.opacity = '0.35'
+                el.style.borderRadius = '2px'
+                el.style.cursor = 'pointer'
+            }, { color })
         }
-    });
-});
+    })
+})
 
 // App Entry Point
 function initColorPicker() {
-    const presets = PRESET_COLORS;
-    const dropdownBtn = $('#bc-color-dropdown-btn');
-    const dropdownMenu = $('#bc-color-dropdown-menu');
+    const presets = PRESET_COLORS
+    const dropdownBtn = $('#bc-color-dropdown-btn')
+    const dropdownMenu = $('#bc-color-dropdown-menu')
 
-    if (!dropdownBtn || !dropdownMenu) return;
+    if (!dropdownBtn || !dropdownMenu) return
 
     // Set initial background color of the trigger button
-    dropdownBtn.style.backgroundColor = myColor;
+    dropdownBtn.style.backgroundColor = myColor
 
     // Toggle dropdown menu display on click
     dropdownBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdownMenu.classList.toggle('show');
-    });
+        e.stopPropagation()
+        dropdownMenu.classList.toggle('show')
+    })
 
     // Close dropdown menu when clicking anywhere else on page
     document.addEventListener('click', (e) => {
         if (!dropdownMenu.contains(e.target) && e.target !== dropdownBtn) {
-            dropdownMenu.classList.remove('show');
+            dropdownMenu.classList.remove('show')
         }
-    });
+    })
 
     function applyColor(color) {
         // Block if another active member already has this exact color
-        const colorLower = color.toLowerCase();
+        const colorLower = color.toLowerCase()
         const takenBy = Object.values(activeMembers).find(
-            m => m.color && m.color.toLowerCase() === colorLower && m.name !== myName
-        );
+            m => m.color && m.color.toLowerCase() === colorLower && m.name !== myName,
+        )
         if (takenBy) {
             // Shake the trigger button visually as feedback
-            dropdownBtn.classList.add('bc-color-taken-shake');
-            setTimeout(() => dropdownBtn.classList.remove('bc-color-taken-shake'), 500);
-            return;
+            dropdownBtn.classList.add('bc-color-taken-shake')
+            setTimeout(() => dropdownBtn.classList.remove('bc-color-taken-shake'), 500)
+            return
         }
 
-        myColor = color;
-        localStorage.setItem('bc-color', myColor);
-        dropdownBtn.style.backgroundColor = myColor;
-        updateSliderThumbColor();
+        myColor = color
+        localStorage.setItem('bc-color', myColor)
+        dropdownBtn.style.backgroundColor = myColor
+        updateSliderThumbColor()
 
         // Update selected swatch highlight in dropdown
         dropdownMenu.querySelectorAll('.bc-color-swatch').forEach(s => {
-            s.classList.toggle('selected', s.dataset.color === myColor);
-        });
+            s.classList.toggle('selected', s.dataset.color === myColor)
+        })
 
         // Update nick input border color if exists as live preview
-        const nickInput = $('#bc-nick-input');
-        if (nickInput) nickInput.style.borderColor = myColor;
+        const nickInput = $('#bc-nick-input')
+        if (nickInput) nickInput.style.borderColor = myColor
 
         // Send update via WS — no reconnect needed
-        sendIdentityUpdate();
+        sendIdentityUpdate()
 
         // Close dropdown after selection
-        dropdownMenu.classList.remove('show');
+        dropdownMenu.classList.remove('show')
     }
 
     // Render preset swatches inside the dropdown grid
     presets.forEach(color => {
-        const swatch = document.createElement('div');
-        swatch.className = 'bc-color-swatch';
-        swatch.dataset.color = color;
-        swatch.style.backgroundColor = color;
-        if (color === myColor) swatch.classList.add('selected');
-        swatch.addEventListener('click', () => applyColor(color));
-        dropdownMenu.appendChild(swatch);
-    });
+        const swatch = document.createElement('div')
+        swatch.className = 'bc-color-swatch'
+        swatch.dataset.color = color
+        swatch.style.backgroundColor = color
+        if (color === myColor) swatch.classList.add('selected')
+        swatch.addEventListener('click', () => applyColor(color))
+        dropdownMenu.appendChild(swatch)
+    })
 }
 
 // Load recent reading history from server
 async function loadHistoryList() {
-    const historyPanel = $('#bc-history-panel');
-    const historyList = $('#bc-history-list');
-    if (!historyPanel || !historyList) return;
+    const historyPanel = $('#bc-history-panel')
+    const historyList = $('#bc-history-list')
+    if (!historyPanel || !historyList) return
 
     try {
-        const res = await fetch('/api/my-rooms');
+        const res = await fetch('/api/my-rooms')
         if (res.ok) {
-            const rooms = await res.json();
+            const rooms = await res.json()
             if (rooms && rooms.length > 0) {
-                historyPanel.style.display = 'block';
-                historyList.innerHTML = '';
-                
+                historyPanel.style.display = 'block'
+                historyList.innerHTML = ''
+
                 rooms.forEach(room => {
-                    const roomCard = document.createElement('div');
-                    roomCard.className = 'bc-card';
-                    roomCard.style.padding = '10px';
-                    roomCard.style.cursor = 'pointer';
-                    roomCard.style.transition = 'transform 0.2s, background-color 0.2s';
-                    roomCard.style.display = 'flex';
-                    roomCard.style.flexDirection = 'column';
-                    roomCard.style.gap = '4px';
-                    roomCard.style.border = '1px solid rgba(128,128,128,0.15)';
-                    
-                    const titleText = room.title || 'Untitled Book';
-                    const authorText = room.author || 'Unknown Author';
-                    const badgeText = room.hasBook ? 'Active' : 'Expired';
-                    const badgeColor = room.hasBook ? '#259b24' : '#ff9800';
-                    
+                    const roomCard = document.createElement('div')
+                    roomCard.className = 'bc-card'
+                    roomCard.style.padding = '10px'
+                    roomCard.style.cursor = 'pointer'
+                    roomCard.style.transition = 'transform 0.2s, background-color 0.2s'
+                    roomCard.style.display = 'flex'
+                    roomCard.style.flexDirection = 'column'
+                    roomCard.style.gap = '4px'
+                    roomCard.style.border = '1px solid rgba(128,128,128,0.15)'
+
+                    const titleText = room.title || 'Untitled Book'
+                    const authorText = room.author || 'Unknown Author'
+                    const badgeText = room.hasBook ? 'Active' : 'Expired'
+                    const badgeColor = room.hasBook ? '#259b24' : '#ff9800'
+
                     roomCard.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                             <strong style="font-size: 0.9em; max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${titleText}</strong>
@@ -1710,61 +1714,61 @@ async function loadHistoryList() {
                         </div>
                         <span style="font-size: 0.8em; opacity: 0.7;">${authorText}</span>
                         <span style="font-size: 0.75em; opacity: 0.5; font-family: monospace;">Code: ${room.roomId}</span>
-                    `;
+                    `
 
-                    const deleteBtn = roomCard.querySelector('.bc-delete-room-btn');
+                    const deleteBtn = roomCard.querySelector('.bc-delete-room-btn')
                     if (deleteBtn) {
-                        deleteBtn.addEventListener('mouseenter', () => { deleteBtn.style.opacity = '1'; deleteBtn.style.background = 'rgba(239,68,68,0.15)'; });
-                        deleteBtn.addEventListener('mouseleave', () => { deleteBtn.style.opacity = '0.7'; deleteBtn.style.background = 'none'; });
+                        deleteBtn.addEventListener('mouseenter', () => { deleteBtn.style.opacity = '1'; deleteBtn.style.background = 'rgba(239,68,68,0.15)' })
+                        deleteBtn.addEventListener('mouseleave', () => { deleteBtn.style.opacity = '0.7'; deleteBtn.style.background = 'none' })
                         deleteBtn.addEventListener('click', async (e) => {
-                            e.stopPropagation();
+                            e.stopPropagation()
                             if (confirm(`Remove room "${titleText}"?`)) {
                                 try {
-                                    const delRes = await fetch(`/api/rooms/${room.roomId}`, { method: 'DELETE' });
+                                    const delRes = await fetch(`/api/rooms/${room.roomId}`, { method: 'DELETE' })
                                     if (delRes.ok) {
-                                        roomCard.remove();
+                                        roomCard.remove()
                                         if (historyList.children.length === 0) {
-                                            historyPanel.style.display = 'none';
+                                            historyPanel.style.display = 'none'
                                         }
                                     } else {
-                                        const errData = await delRes.json();
-                                        alert(errData.error || 'Failed to remove room');
+                                        const errData = await delRes.json()
+                                        alert(errData.error || 'Failed to remove room')
                                     }
                                 } catch (err) {
-                                    console.error('[Book Club] Error removing room:', err);
+                                    console.error('[Book Club] Error removing room:', err)
                                 }
                             }
-                        });
+                        })
                     }
-                    
+
                     roomCard.addEventListener('mouseenter', () => {
-                        roomCard.style.backgroundColor = 'rgba(128, 128, 128, 0.08)';
-                        roomCard.style.transform = 'translateY(-1px)';
-                    });
+                        roomCard.style.backgroundColor = 'rgba(128, 128, 128, 0.08)'
+                        roomCard.style.transform = 'translateY(-1px)'
+                    })
                     roomCard.addEventListener('mouseleave', () => {
-                        roomCard.style.backgroundColor = '';
-                        roomCard.style.transform = 'none';
-                    });
-                    
+                        roomCard.style.backgroundColor = ''
+                        roomCard.style.transform = 'none'
+                    })
+
                     roomCard.addEventListener('click', () => {
                         // If already in this room, just switch to Book Club tab — no reload needed
                         if (roomId === room.roomId) {
-                            const tabBookclub = $('#tab-bookclub');
-                            if (tabBookclub) tabBookclub.click();
-                            return;
+                            const tabBookclub = $('#tab-bookclub')
+                            if (tabBookclub) tabBookclub.click()
+                            return
                         }
-                        const newUrl = `${window.location.origin}${window.location.pathname}?room=${room.roomId}`;
-                        window.location.href = newUrl;
-                    });
-                    
-                    historyList.appendChild(roomCard);
-                });
+                        const newUrl = `${window.location.origin}${window.location.pathname}?room=${room.roomId}`
+                        window.location.href = newUrl
+                    })
+
+                    historyList.appendChild(roomCard)
+                })
             } else {
-                historyPanel.style.display = 'none';
+                historyPanel.style.display = 'none'
             }
         }
     } catch (err) {
-        console.error('[Book Club] Failed to load reading history:', err);
+        console.error('[Book Club] Failed to load reading history:', err)
     }
 }
 
@@ -1772,73 +1776,73 @@ async function loadHistoryList() {
 
 // Active personal rooms for the logged-in user on the Home screen dashboard
 async function loadMyRooms() {
-    const list = document.getElementById('your-rooms-list');
-    const shelfBtn = document.getElementById('bc-home-shelf-btn');
-    const shelfBadge = document.getElementById('bc-home-shelf-badge');
-    const shelfModalOverlay = document.getElementById('bc-shelf-modal-overlay');
-    if (!list) return;
+    const list = document.getElementById('your-rooms-list')
+    const shelfBtn = document.getElementById('bc-home-shelf-btn')
+    const shelfBadge = document.getElementById('bc-home-shelf-badge')
+    const shelfModalOverlay = document.getElementById('bc-shelf-modal-overlay')
+    if (!list) return
 
     try {
-        const res = await fetch('/api/my-rooms');
-        if (!res.ok) throw new Error('Failed');
-        const rooms = await res.json();
+        const res = await fetch('/api/my-rooms')
+        if (!res.ok) throw new Error('Failed')
+        const rooms = await res.json()
 
-        list.innerHTML = '';
+        list.innerHTML = ''
 
         // Show active rooms where book exists
-        const activeRooms = (rooms || []).filter(room => room.hasBook);
+        const activeRooms = (rooms || []).filter(room => room.hasBook)
 
         if (activeRooms.length === 0) {
-            if (shelfBtn) shelfBtn.style.display = 'none';
-            if (shelfModalOverlay) shelfModalOverlay.style.display = 'none';
-            return;
+            if (shelfBtn) shelfBtn.style.display = 'none'
+            if (shelfModalOverlay) shelfModalOverlay.style.display = 'none'
+            return
         }
 
         if (shelfBtn) {
-            shelfBtn.style.display = 'flex';
-            if (shelfBadge) shelfBadge.innerText = activeRooms.length;
+            shelfBtn.style.display = 'flex'
+            if (shelfBadge) shelfBadge.innerText = activeRooms.length
         }
 
         activeRooms.forEach(room => {
-            const card = document.createElement('div');
-            card.className = 'your-room-card bc-card';
+            const card = document.createElement('div')
+            card.className = 'your-room-card bc-card'
 
-            const ext = (room.bookPath || room.title || '').toLowerCase();
-            const isPDF = ext.includes('.pdf');
-            const isCBZ = ext.includes('.cbz');
-            const isFB2 = ext.includes('.fb2');
-            const isMOBI = ext.includes('.mobi');
-            const formatName = isPDF ? 'PDF' : (isCBZ ? 'CBZ' : (isFB2 ? 'FB2' : (isMOBI ? 'MOBI' : 'EPUB')));
+            const ext = (room.bookPath || room.title || '').toLowerCase()
+            const isPDF = ext.includes('.pdf')
+            const isCBZ = ext.includes('.cbz')
+            const isFB2 = ext.includes('.fb2')
+            const isMOBI = ext.includes('.mobi')
+            const formatName = isPDF ? 'PDF' : (isCBZ ? 'CBZ' : (isFB2 ? 'FB2' : (isMOBI ? 'MOBI' : 'EPUB')))
 
             // Format Icon SVG for each file type
-            let formatIconSvg = '';
+            let formatIconSvg = ''
             if (isPDF) {
-                formatIconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h4"/><path d="M10 16h4"/></svg>`;
+                formatIconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h4"/><path d="M10 16h4"/></svg>'
             } else if (isMOBI) {
-                formatIconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
+                formatIconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>'
             } else if (isCBZ) {
-                formatIconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>`;
+                formatIconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>'
             } else {
-                formatIconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 6v13"/></svg>`;
+                formatIconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 6v13"/></svg>'
             }
 
             // Calculate estimated remaining pages as in reference image (e.g. 780 left)
-            const pagesLeftText = room.pagesLeft 
-                ? `${room.pagesLeft} left` 
-                : (room.progress ? `${Math.max(1, Math.round((1 - room.progress) * 450))} left` : '780 left');
+            const pagesLeftText = room.pagesLeft
+                ? `${room.pagesLeft} left`
+                : (room.progress ? `${Math.max(1, Math.round((1 - room.progress) * 450))} left` : '780 left')
 
-            const isOwner = myDiscordId && room.creatorId === myDiscordId;
-            const closeBtnClass = isOwner ? 'your-room-close-btn delete' : 'your-room-close-btn leave';
-            const closeBtnTitle = isOwner ? 'Delete Room' : 'Leave Room';
+            const isOwner = myDiscordId && room.creatorId === myDiscordId
+            const closeBtnClass = isOwner ? 'your-room-close-btn delete' : 'your-room-close-btn leave'
+            const closeBtnTitle = isOwner ? 'Delete Room' : 'Leave Room'
 
             // Cover image URL from room or local storage cache
-            const cachedCover = room.coverUrl || localStorage.getItem(`paperback-cover-${room.title}`) || localStorage.getItem(`paperback-cover-${room.roomId}`);
+            const cachedCover = room.coverUrl || localStorage.getItem(`paperback-cover-${room.title}`) || localStorage.getItem(`paperback-cover-${room.roomId}`)
 
             const coverHtml = cachedCover
                 ? `<img class="your-room-cover" src="${cachedCover}" alt="Cover">`
                 : `<div class="your-room-cover your-room-cover-fallback">
                      <span class="cover-fallback-title">${(room.title || 'B')[0].toUpperCase()}</span>
-                   </div>`;
+                   </div>`
 
             card.innerHTML = `
                 <button class="${closeBtnClass}" title="${closeBtnTitle}">
@@ -1863,47 +1867,47 @@ async function loadMyRooms() {
                     </div>
                 </div>
                 ${coverHtml}
-            `;
+            `
 
             // Card click leads to joining the room
             card.addEventListener('click', (e) => {
-                if (e.target.closest('.your-room-close-btn')) return;
-                const url = `${window.location.origin}${window.location.pathname}?room=${room.roomId}`;
-                window.location.href = url;
-            });
+                if (e.target.closest('.your-room-close-btn')) return
+                const url = `${window.location.origin}${window.location.pathname}?room=${room.roomId}`
+                window.location.href = url
+            })
 
             // Copy room code & link button
             card.querySelector('.copy-link')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${room.roomId}`;
+                e.stopPropagation()
+                const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${room.roomId}`
                 navigator.clipboard.writeText(inviteUrl).then(() => {
-                    const btn = e.currentTarget;
-                    const textSpan = btn.querySelector('span');
+                    const btn = e.currentTarget
+                    const textSpan = btn.querySelector('span')
                     if (textSpan) {
-                        const originalText = textSpan.innerText;
-                        textSpan.innerText = 'Copied!';
-                        setTimeout(() => { textSpan.innerText = originalText; }, 2000);
+                        const originalText = textSpan.innerText
+                        textSpan.innerText = 'Copied!'
+                        setTimeout(() => { textSpan.innerText = originalText }, 2000)
                     }
-                });
-            });
+                })
+            })
 
             // Bind Close/Delete button with Confirmation Dialog
             card.querySelector('.your-room-close-btn')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                showDeleteRoomModal(room, isOwner);
-            });
+                e.stopPropagation()
+                showDeleteRoomModal(room, isOwner)
+            })
 
-            list.appendChild(card);
-        });
+            list.appendChild(card)
+        })
     } catch (err) {
-        console.error('Error fetching user rooms:', err);
+        console.error('Error fetching user rooms:', err)
     }
 }
 
 function showDeleteRoomModal(room, isOwner) {
-    const overlay = document.createElement('div');
-    overlay.className = 'bc-modal-overlay show';
-    overlay.style.zIndex = '100000';
+    const overlay = document.createElement('div')
+    overlay.className = 'bc-modal-overlay show'
+    overlay.style.zIndex = '100000'
 
     if (isOwner) {
         overlay.innerHTML = `
@@ -1924,7 +1928,7 @@ function showDeleteRoomModal(room, isOwner) {
                     <button class="bc-btn confirm-del-btn" disabled style="background: #ef4444; color: #fff; padding: 8px 16px; border-radius: 8px; border: none; font-weight: 600; font-size: 0.85rem; opacity: 0.45; cursor: not-allowed;">Delete Room</button>
                 </div>
             </div>
-        `;
+        `
     } else {
         overlay.innerHTML = `
             <div class="bc-modal" style="max-width: 400px; padding: 24px; background: #18181c; border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); text-align: left;">
@@ -1940,179 +1944,179 @@ function showDeleteRoomModal(room, isOwner) {
                     <button class="bc-btn confirm-leave-btn" style="background: #f59e0b; color: #fff; padding: 8px 16px; border-radius: 8px; border: none; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Leave Room</button>
                 </div>
             </div>
-        `;
+        `
     }
 
-    document.body.appendChild(overlay);
+    document.body.appendChild(overlay)
 
-    overlay.querySelector('.cancel-btn')?.addEventListener('click', () => overlay.remove());
+    overlay.querySelector('.cancel-btn')?.addEventListener('click', () => overlay.remove())
 
     if (isOwner) {
-        const checkbox = overlay.querySelector('#bc-delete-confirm-cb');
-        const confirmBtn = overlay.querySelector('.confirm-del-btn');
+        const checkbox = overlay.querySelector('#bc-delete-confirm-cb')
+        const confirmBtn = overlay.querySelector('.confirm-del-btn')
         checkbox?.addEventListener('change', () => {
-            confirmBtn.disabled = !checkbox.checked;
-            confirmBtn.style.opacity = checkbox.checked ? '1' : '0.45';
-            confirmBtn.style.cursor = checkbox.checked ? 'pointer' : 'not-allowed';
-        });
+            confirmBtn.disabled = !checkbox.checked
+            confirmBtn.style.opacity = checkbox.checked ? '1' : '0.45'
+            confirmBtn.style.cursor = checkbox.checked ? 'pointer' : 'not-allowed'
+        })
 
         confirmBtn?.addEventListener('click', () => {
-            overlay.remove();
-            showLoading('Deleting room...');
+            overlay.remove()
+            showLoading('Deleting room...')
             fetch(`/api/rooms/${room.roomId}`, { method: 'DELETE' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        loadMyRooms();
-                        loadHistoryList();
+                        loadMyRooms()
+                        loadHistoryList()
                     } else {
-                        alert(data.error || 'Failed to delete room');
+                        alert(data.error || 'Failed to delete room')
                     }
                 })
                 .catch(err => {
-                    console.error('Delete error:', err);
-                    alert('Error deleting room');
+                    console.error('Delete error:', err)
+                    alert('Error deleting room')
                 })
-                .finally(() => hideLoading());
-        });
+                .finally(() => hideLoading())
+        })
     } else {
         overlay.querySelector('.confirm-leave-btn')?.addEventListener('click', () => {
-            overlay.remove();
-            showLoading('Leaving room...');
+            overlay.remove()
+            showLoading('Leaving room...')
             fetch(`/api/rooms/${room.roomId}/leave`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        loadMyRooms();
-                        loadHistoryList();
+                        loadMyRooms()
+                        loadHistoryList()
                     } else {
-                        alert(data.error || 'Failed to leave room');
+                        alert(data.error || 'Failed to leave room')
                     }
                 })
                 .catch(err => {
-                    console.error('Leave error:', err);
-                    alert('Error leaving room');
+                    console.error('Leave error:', err)
+                    alert('Error leaving room')
                 })
-                .finally(() => hideLoading());
-        });
+                .finally(() => hideLoading())
+        })
     }
 }
 
 // Help & About modal
 function initHelpModal() {
-    const helpBtn = $('#help-button'); // may be null now
-    const overlay = $('#help-modal-overlay');
-    const closeBtn = $('#help-modal-close');
-    if (!overlay) return;
+    const helpBtn = $('#help-button') // may be null now
+    const overlay = $('#help-modal-overlay')
+    const closeBtn = $('#help-modal-close')
+    if (!overlay) return
 
     function openModal() {
-        overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        overlay.style.display = 'flex'
+        document.body.style.overflow = 'hidden'
     }
 
     function closeModal() {
-        overlay.style.display = 'none';
-        document.body.style.overflow = '';
+        overlay.style.display = 'none'
+        document.body.style.overflow = ''
     }
 
-    if (helpBtn) helpBtn.addEventListener('click', openModal);
-    closeBtn?.addEventListener('click', closeModal);
+    if (helpBtn) helpBtn.addEventListener('click', openModal)
+    closeBtn?.addEventListener('click', closeModal)
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) closeModal();
-    });
+        if (e.target === overlay) closeModal()
+    })
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && overlay.style.display === 'flex') closeModal();
-    });
+        if (e.key === 'Escape' && overlay.style.display === 'flex') closeModal()
+    })
 }
 
 // Reading Shelf Modal triggers
 function initShelfModal() {
-    const shelfBtn = document.getElementById('bc-home-shelf-btn');
-    const overlay = document.getElementById('bc-shelf-modal-overlay');
-    const closeBtn = document.getElementById('bc-shelf-modal-close');
-    if (!overlay) return;
+    const shelfBtn = document.getElementById('bc-home-shelf-btn')
+    const overlay = document.getElementById('bc-shelf-modal-overlay')
+    const closeBtn = document.getElementById('bc-shelf-modal-close')
+    if (!overlay) return
 
     function openModal() {
-        loadMyRooms(); // Refresh the list when opening
-        overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        loadMyRooms() // Refresh the list when opening
+        overlay.style.display = 'flex'
+        document.body.style.overflow = 'hidden'
     }
 
     function closeModal() {
-        overlay.style.display = 'none';
-        document.body.style.overflow = '';
+        overlay.style.display = 'none'
+        document.body.style.overflow = ''
     }
 
-    shelfBtn?.addEventListener('click', openModal);
-    closeBtn?.addEventListener('click', closeModal);
+    shelfBtn?.addEventListener('click', openModal)
+    closeBtn?.addEventListener('click', closeModal)
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) closeModal();
-    });
+        if (e.target === overlay) closeModal()
+    })
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && overlay.style.display === 'flex') closeModal();
-    });
+        if (e.key === 'Escape' && overlay.style.display === 'flex') closeModal()
+    })
 }
 
 // Active Idle Detection & Auto-Disconnect to prevent battery/resource drain
 function initIdleDetector() {
     // Reset timer on parent layout interactions
-    const resetEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    const resetEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll']
     resetEvents.forEach(evt => {
-        document.addEventListener(evt, resetIdleTimer, { passive: true });
-    });
+        document.addEventListener(evt, resetIdleTimer, { passive: true })
+    })
 
     // Wire up the Reconnect button on the idle overlay
-    const reconnectBtn = document.getElementById('bc-reconnect-btn');
+    const reconnectBtn = document.getElementById('bc-reconnect-btn')
     if (reconnectBtn) {
         reconnectBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            wakeUpFromIdle();
-        });
+            e.stopPropagation()
+            wakeUpFromIdle()
+        })
     }
 
     // Start detector timer
-    resetIdleTimer();
+    resetIdleTimer()
 }
 
 function resetIdleTimer() {
     if (isIdle) {
-        wakeUpFromIdle();
+        wakeUpFromIdle()
     }
-    clearTimeout(idleTimeout);
-    idleTimeout = setTimeout(goIdle, IDLE_TIME_LIMIT);
+    clearTimeout(idleTimeout)
+    idleTimeout = setTimeout(goIdle, IDLE_TIME_LIMIT)
 }
 
 function goIdle() {
-    if (isIdle || !roomId) return;
-    isIdle = true;
-    console.log('[Book Club] Idle limit reached. Suspending WebSocket presence...');
+    if (isIdle || !roomId) return
+    isIdle = true
+    console.log('[Book Club] Idle limit reached. Suspending WebSocket presence...')
 
     // Close WS session to stop updating room last_active and save connection slots
     if (ws) {
-        intentionalClose = true;
-        ws.close();
-        ws = null;
+        intentionalClose = true
+        ws.close()
+        ws = null
     }
 
     // Display the idle overlay blocking Book Club UI
-    const overlay = document.getElementById('bc-idle-overlay');
+    const overlay = document.getElementById('bc-idle-overlay')
     if (overlay) {
-        overlay.style.display = 'flex';
+        overlay.style.display = 'flex'
     }
 }
 
 function wakeUpFromIdle() {
-    if (!isIdle) return;
-    isIdle = false;
+    if (!isIdle) return
+    isIdle = false
 
     // Hide the idle overlay
-    const overlay = document.getElementById('bc-idle-overlay');
+    const overlay = document.getElementById('bc-idle-overlay')
     if (overlay) {
-        overlay.style.display = 'none';
+        overlay.style.display = 'none'
     }
 
-    console.log('[Book Club] Interaction detected. Restoring WebSocket session...');
-    connectWebSocket();
+    console.log('[Book Club] Interaction detected. Restoring WebSocket session...')
+    connectWebSocket()
 }
 
 // Auto-reconnect WebSocket on visibility state changes (e.g. app switching on mobile)
@@ -2120,177 +2124,177 @@ function initAutoReconnect() {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && roomId) {
             if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-                console.log('[Book Club] App returned to foreground. Auto-reconnecting WebSocket...');
-                connectWebSocket();
+                console.log('[Book Club] App returned to foreground. Auto-reconnecting WebSocket...')
+                connectWebSocket()
             }
         }
-    });
+    })
 }
 
 async function checkAuth() {
     try {
-        const res = await fetch(`/api/auth/me?_t=${Date.now()}`, { 
+        const res = await fetch(`/api/auth/me?_t=${Date.now()}`, {
             credentials: 'same-origin',
-            cache: 'no-store'
-        });
-        const data = await res.json();
-        
+            cache: 'no-store',
+        })
+        const data = await res.json()
+
         if (!data.loggedIn) {
             // Auto-provision guest profile for instant zero-friction reading
             try {
-                const guestRes = await fetch('/api/auth/guest', { method: 'POST' });
+                const guestRes = await fetch('/api/auth/guest', { method: 'POST' })
                 if (guestRes.ok) {
-                    const guestData = await guestRes.json();
+                    const guestData = await guestRes.json()
                     if (guestData.user) {
-                        return checkAuth();
+                        return checkAuth()
                     }
                 }
             } catch (guestErr) {
-                console.warn('[Guest Provision Warning]', guestErr);
+                console.warn('[Guest Provision Warning]', guestErr)
             }
         }
 
         if (data.loggedIn) {
-            const user = data.user;
-            const isGuest = data.isGuest || user.discord_id.startsWith('guest-');
-            myDiscordId = user.discord_id;
-            myName = user.username;
-            myAvatarUrl = user.avatar_url;
-            myColor = user.color;
+            const user = data.user
+            const isGuest = data.isGuest || user.discord_id.startsWith('guest-')
+            myDiscordId = user.discord_id
+            myName = user.username
+            myAvatarUrl = user.avatar_url
+            myColor = user.color
 
             // Show main app welcome screen, hide landing screen immediately
-            const landingText = $('#bc-landing-text');
-            if (landingText) landingText.style.display = 'none';
-            const appContent = $('#bc-app-content');
-            if (appContent) appContent.style.display = 'flex';
-            const viewMoreBtn = $('#bc-view-more-btn');
-            if (viewMoreBtn) viewMoreBtn.style.display = 'inline-flex';
+            const landingText = $('#bc-landing-text')
+            if (landingText) landingText.style.display = 'none'
+            const appContent = $('#bc-app-content')
+            if (appContent) appContent.style.display = 'flex'
+            const viewMoreBtn = $('#bc-view-more-btn')
+            if (viewMoreBtn) viewMoreBtn.style.display = 'inline-flex'
 
             // Fill sidebar profile card
-            const avatarImg = $('#bc-my-avatar');
-            if (avatarImg) avatarImg.src = user.avatar_url;
-            const usernameSpan = $('#bc-my-username');
+            const avatarImg = $('#bc-my-avatar')
+            if (avatarImg) avatarImg.src = user.avatar_url
+            const usernameSpan = $('#bc-my-username')
             if (usernameSpan) {
-                usernameSpan.innerText = user.username + (isGuest ? ' (Guest)' : '');
+                usernameSpan.innerText = user.username + (isGuest ? ' (Guest)' : '')
             }
 
-            document.documentElement.style.setProperty('--bc-user-color', user.color);
-            
+            document.documentElement.style.setProperty('--bc-user-color', user.color)
+
             // Re-select preset swatch color picker
-            const swatches = document.querySelectorAll('.bc-color-swatch');
+            const swatches = document.querySelectorAll('.bc-color-swatch')
             swatches.forEach(s => {
-                s.classList.toggle('selected', s.dataset.color === myColor);
-            });
-            const colorInput = $('#bc-color-input');
-            if (colorInput) colorInput.value = myColor;
+                s.classList.toggle('selected', s.dataset.color === myColor)
+            })
+            const colorInput = $('#bc-color-input')
+            if (colorInput) colorInput.value = myColor
 
             // Helper for handling user logout
             const handleLogout = async () => {
-                const logoutRes = await fetch('/api/auth/logout', { method: 'POST' });
+                const logoutRes = await fetch('/api/auth/logout', { method: 'POST' })
                 if (logoutRes.ok) {
-                    window.location.reload();
+                    window.location.reload()
                 }
-            };
+            }
 
             // Wire up logout button
-            const logoutBtn = $('#bc-logout-btn');
+            const logoutBtn = $('#bc-logout-btn')
             if (logoutBtn) {
-                logoutBtn.addEventListener('click', handleLogout);
+                logoutBtn.addEventListener('click', handleLogout)
             }
 
             // Fill welcome screen info and Discord linking button if guest
-            const welcomeUserInfo = $('#bc-welcome-user-info');
+            const welcomeUserInfo = $('#bc-welcome-user-info')
             if (welcomeUserInfo) {
                 if (isGuest) {
-                    welcomeUserInfo.innerHTML = `Reading as <strong>${user.username}</strong> — <a href="/api/auth/discord" style="color: #5865F2; font-weight: bold; text-decoration: underline; margin-left: 6px;">Connect Discord Profile</a>`;
+                    welcomeUserInfo.innerHTML = `Reading as <strong>${user.username}</strong> — <a href="/api/auth/discord" style="color: #5865F2; font-weight: bold; text-decoration: underline; margin-left: 6px;">Connect Discord Profile</a>`
                 } else {
-                    welcomeUserInfo.innerHTML = `Connected as <strong>${user.username}</strong>. Not you? <button id="bc-welcome-logout-btn" style="background: none; border: none; color: #ff4444; text-decoration: underline; cursor: pointer; padding: 0; font: inherit;">Logout</button>`;
-                    const welcomeLogoutBtn = $('#bc-welcome-logout-btn');
+                    welcomeUserInfo.innerHTML = `Connected as <strong>${user.username}</strong>. Not you? <button id="bc-welcome-logout-btn" style="background: none; border: none; color: #ff4444; text-decoration: underline; cursor: pointer; padding: 0; font: inherit;">Logout</button>`
+                    const welcomeLogoutBtn = $('#bc-welcome-logout-btn')
                     if (welcomeLogoutBtn) {
-                        welcomeLogoutBtn.addEventListener('click', handleLogout);
+                        welcomeLogoutBtn.addEventListener('click', handleLogout)
                     }
                 }
             }
 
             // Check if we have a saved redirect room from localStorage
-            const redirectRoom = localStorage.getItem('redirect_room');
+            const redirectRoom = localStorage.getItem('redirect_room')
             if (redirectRoom && redirectRoom !== 'null' && redirectRoom !== 'undefined') {
-                localStorage.removeItem('redirect_room');
-                const newUrl = `${window.location.origin}${window.location.pathname}?room=${redirectRoom}`;
-                window.history.replaceState({ roomId: redirectRoom }, document.title, newUrl);
-                roomId = redirectRoom;
+                localStorage.removeItem('redirect_room')
+                const newUrl = `${window.location.origin}${window.location.pathname}?room=${redirectRoom}`
+                window.history.replaceState({ roomId: redirectRoom }, document.title, newUrl)
+                roomId = redirectRoom
             } else {
-                localStorage.removeItem('redirect_room'); // Clean up dirty string if any
+                localStorage.removeItem('redirect_room') // Clean up dirty string if any
             }
 
             // Now run other client initiations
-            initTabs();
-            initSetupEvents();
-            initColorPicker();
-            checkRoomParam();
-            loadHistoryList();
-            initAutoReconnect();
-            initHelpModal();
-            initShelfModal();
-            initIdleDetector();
-            loadMyRooms();
-            renderMembersPill();
+            initTabs()
+            initSetupEvents()
+            initColorPicker()
+            checkRoomParam()
+            loadHistoryList()
+            initAutoReconnect()
+            initHelpModal()
+            initShelfModal()
+            initIdleDetector()
+            loadMyRooms()
+            renderMembersPill()
 
             setInterval(() => {
                 if (!roomId) {
-                    loadMyRooms();
+                    loadMyRooms()
                 }
-            }, 30000);
+            }, 30000)
         } else {
             // Show landing screen, hide main app welcome screen
-            const landingText = $('#bc-landing-text');
-            if (landingText) landingText.style.display = 'flex';
-            const appContent = $('#bc-app-content');
-            if (appContent) appContent.style.display = 'none';
-            const viewMoreBtn = $('#bc-view-more-btn');
-            if (viewMoreBtn) viewMoreBtn.style.display = 'none';
+            const landingText = $('#bc-landing-text')
+            if (landingText) landingText.style.display = 'flex'
+            const appContent = $('#bc-app-content')
+            if (appContent) appContent.style.display = 'none'
+            const viewMoreBtn = $('#bc-view-more-btn')
+            if (viewMoreBtn) viewMoreBtn.style.display = 'none'
 
             // Store redirect room parameter to redirect_room so that they return to it after Discord OAuth!
-            const params = new URLSearchParams(window.location.search);
-            const urlRoomId = params.get('room');
+            const params = new URLSearchParams(window.location.search)
+            const urlRoomId = params.get('room')
             if (urlRoomId && urlRoomId !== 'null' && urlRoomId !== 'undefined') {
-                localStorage.setItem('redirect_room', urlRoomId);
+                localStorage.setItem('redirect_room', urlRoomId)
             }
 
-            initHelpModal();
-            renderMembersPill();
+            initHelpModal()
+            renderMembersPill()
         }
     } catch (e) {
-        console.error('[Book Club] Auth check failed:', e);
+        console.error('[Book Club] Auth check failed:', e)
     }
 }
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        checkAuth();
-        renderMembersPill();
-    });
+        checkAuth()
+        renderMembersPill()
+    })
 } else {
-    checkAuth();
-    renderMembersPill();
+    checkAuth()
+    renderMembersPill()
 }
 
-    // Listen for mouse movement in the main parent window
-    window.addEventListener('mousemove', (e) => {
-        sendMouseMove(e, false);
-    });
+// Listen for mouse movement in the main parent window
+window.addEventListener('mousemove', (e) => {
+    sendMouseMove(e, false)
+})
 
-    window.addEventListener('mousedown', (e) => {
-        sendMouseMove(e, false);
-    });
+window.addEventListener('mousedown', (e) => {
+    sendMouseMove(e, false)
+})
 
-    // Prevent keypresses in inputs/textareas from triggering Foliate page-turn hotkeys
-    document.addEventListener('keydown', (e) => {
-        const tag = e.target.tagName.toLowerCase();
-        if (tag === 'input' || tag === 'textarea') {
-            const k = e.key;
-            if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'h' || k === 'l') {
-                e.stopImmediatePropagation();
-            }
+// Prevent keypresses in inputs/textareas from triggering Foliate page-turn hotkeys
+document.addEventListener('keydown', (e) => {
+    const tag = e.target.tagName.toLowerCase()
+    if (tag === 'input' || tag === 'textarea') {
+        const k = e.key
+        if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'h' || k === 'l') {
+            e.stopImmediatePropagation()
         }
-    }, true);
+    }
+}, true)

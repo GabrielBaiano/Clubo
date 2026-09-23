@@ -1,43 +1,43 @@
-import sqlite3 from 'sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
+import sqlite3 from 'sqlite3'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import fs from 'fs'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // Check if /data directory exists and is writable (common persistent volume mount path in production like Fly.io)
-let dataDirExists = false;
+let dataDirExists = false
 try {
     if (fs.existsSync('/data')) {
-        fs.accessSync('/data', fs.constants.W_OK);
-        dataDirExists = true;
+        fs.accessSync('/data', fs.constants.W_OK)
+        dataDirExists = true
     }
 } catch (err) {
-    console.warn('[DB Warning] /data directory exists but is not writable. Falling back to local directory.', err.message);
+    console.warn('[DB Warning] /data directory exists but is not writable. Falling back to local directory.', err.message)
 }
 
-const dbPath = dataDirExists 
-    ? '/data/foliate_jam.db' 
-    : path.join(__dirname, 'foliate_jam.db');
+const dbPath = dataDirExists
+    ? '/data/foliate_jam.db'
+    : path.join(__dirname, 'foliate_jam.db')
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        console.error('[DB] Failed to open SQLite database:', err);
+        console.error('[DB] Failed to open SQLite database:', err)
     } else {
-        console.log('[DB] SQLite database connected successfully. Path:', dbPath);
+        console.log('[DB] SQLite database connected successfully. Path:', dbPath)
     }
-});
+})
 
 // Helper for database schema migrations / table setup
 db.serialize(() => {
     // Enable WAL mode and NORMAL synchronous for high-performance concurrent reads/writes
     db.run('PRAGMA journal_mode = WAL;', (err) => {
-        if (err) console.error('[DB Pragma Error] Failed to enable WAL mode:', err);
-    });
+        if (err) console.error('[DB Pragma Error] Failed to enable WAL mode:', err)
+    })
     db.run('PRAGMA synchronous = NORMAL;', (err) => {
-        if (err) console.error('[DB Pragma Error] Failed to set synchronous = NORMAL:', err);
-    });
+        if (err) console.error('[DB Pragma Error] Failed to set synchronous = NORMAL:', err)
+    })
 
     // 1. Users Table
     db.run(`
@@ -48,7 +48,7 @@ db.serialize(() => {
             color TEXT,
             last_login TEXT
         )
-    `);
+    `)
 
     // 2. Rooms Table
     db.run(`
@@ -62,7 +62,7 @@ db.serialize(() => {
             last_active TEXT,
             creator_id TEXT
         )
-    `);
+    `)
 
     // 3. Room Members Table (composite key)
     db.run(`
@@ -76,7 +76,7 @@ db.serialize(() => {
             FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE CASCADE,
             FOREIGN KEY (discord_id) REFERENCES users(discord_id) ON DELETE CASCADE
         )
-    `);
+    `)
 
     // 4. Highlights Table
     db.run(`
@@ -92,61 +92,61 @@ db.serialize(() => {
             FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE CASCADE,
             FOREIGN KEY (discord_id) REFERENCES users(discord_id) ON DELETE CASCADE
         )
-    `);
+    `)
 
     // Create indexes for fast joins and lookups
-    db.run('CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_id)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(discord_id)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_highlights_room ON highlights(room_id)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_rooms_last_active ON rooms(last_active)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_rooms_creator ON rooms(creator_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_id)')
+    db.run('CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(discord_id)')
+    db.run('CREATE INDEX IF NOT EXISTS idx_highlights_room ON highlights(room_id)')
+    db.run('CREATE INDEX IF NOT EXISTS idx_rooms_last_active ON rooms(last_active)')
+    db.run('CREATE INDEX IF NOT EXISTS idx_rooms_creator ON rooms(creator_id)')
 
     // Run Alter Table migrations safely to avoid crashes on existing databases
-    db.run("ALTER TABLE rooms ADD COLUMN last_active TEXT", (err) => {
-        if (err && !err.message.includes("duplicate column name")) {
-            console.error('[DB Migration Warning] Failed to add last_active:', err.message);
+    db.run('ALTER TABLE rooms ADD COLUMN last_active TEXT', (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error('[DB Migration Warning] Failed to add last_active:', err.message)
         }
-    });
+    })
 
-    db.run("ALTER TABLE rooms ADD COLUMN creator_id TEXT", (err) => {
-        if (err && !err.message.includes("duplicate column name")) {
-            console.error('[DB Migration Warning] Failed to add creator_id:', err.message);
+    db.run('ALTER TABLE rooms ADD COLUMN creator_id TEXT', (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error('[DB Migration Warning] Failed to add creator_id:', err.message)
         }
-    });
+    })
 
-    db.run("ALTER TABLE room_members ADD COLUMN chapter TEXT", (err) => {
-        if (err && !err.message.includes("duplicate column name")) {
-            console.error('[DB Migration Warning] Failed to add chapter to room_members:', err.message);
+    db.run('ALTER TABLE room_members ADD COLUMN chapter TEXT', (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            console.error('[DB Migration Warning] Failed to add chapter to room_members:', err.message)
         }
-    });
-});
+    })
+})
 
 // Helper functions for promise-based SQLite calls
 export function dbRun(sql, params = []) {
     return new Promise((resolve, reject) => {
         db.run(sql, params, function (err) {
-            if (err) reject(err);
-            else resolve(this);
-        });
-    });
+            if (err) reject(err)
+            else resolve(this)
+        })
+    })
 }
 
 export function dbGet(sql, params = []) {
     return new Promise((resolve, reject) => {
         db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
+            if (err) reject(err)
+            else resolve(row)
+        })
+    })
 }
 
 export function dbAll(sql, params = []) {
     return new Promise((resolve, reject) => {
         db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
+            if (err) reject(err)
+            else resolve(rows)
+        })
+    })
 }
 
-export default db;
+export default db

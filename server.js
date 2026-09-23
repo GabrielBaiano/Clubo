@@ -1,31 +1,31 @@
-import express from 'express';
-import { createServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
-import multer from 'multer';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-import dotenv from 'dotenv';
-import cookieParser from 'cookie-parser';
-import jwt from 'jsonwebtoken';
-import { createClient } from '@supabase/supabase-js';
+import express from 'express'
+import { createServer } from 'http'
+import { WebSocketServer, WebSocket } from 'ws'
+import multer from 'multer'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import fs from 'fs'
+import dotenv from 'dotenv'
+import cookieParser from 'cookie-parser'
+import jwt from 'jsonwebtoken'
+import { createClient } from '@supabase/supabase-js'
 
 // Import SQLite helper functions
-import { dbRun, dbGet, dbAll } from './db.js';
+import { dbRun, dbGet, dbAll } from './db.js'
 
-dotenv.config();
+dotenv.config()
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-const app = express();
-app.set('trust proxy', 1);
-const server = createServer(app);
-const wss = new WebSocketServer({ server });
+const app = express()
+app.set('trust proxy', 1)
+const server = createServer(app)
+const wss = new WebSocketServer({ server })
 
-const JWT_SECRET = process.env.JWT_SECRET || 'foliate-jam-super-secret-key-12345';
+const JWT_SECRET = process.env.JWT_SECRET || 'foliate-jam-super-secret-key-12345'
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-    console.warn('[Security Warning] JWT_SECRET environment variable is not set in production! Using fallback secret.');
+    console.warn('[Security Warning] JWT_SECRET environment variable is not set in production! Using fallback secret.')
 }
 
 function getCookieOptions(req) {
@@ -33,51 +33,51 @@ function getCookieOptions(req) {
         httpOnly: true,
         maxAge: 7 * 24 * 60 * 60 * 1000,
         sameSite: 'lax',
-        path: '/'
-    };
+        path: '/',
+    }
 }
-let supabaseUrl = process.env.SUPABASE_URL;
+let supabaseUrl = process.env.SUPABASE_URL
 if (supabaseUrl && supabaseUrl.includes('/rest/v1')) {
-    supabaseUrl = supabaseUrl.replace(/\/rest\/v1\/?$/, '');
+    supabaseUrl = supabaseUrl.replace(/\/rest\/v1\/?$/, '')
 }
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+const supabaseKey = process.env.SUPABASE_KEY
+const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null
 
 if (supabase) {
-    console.log('[Supabase] Client initialized successfully. Using Supabase Storage.');
+    console.log('[Supabase] Client initialized successfully. Using Supabase Storage.')
 } else {
-    console.log('[Supabase Warning] Credentials missing. Falling back to local ephemeral storage.');
+    console.log('[Supabase Warning] Credentials missing. Falling back to local ephemeral storage.')
 }
 
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
-const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET
 
 // Configure multer for file uploads
-let uploadDir;
-let useDataDir = false;
+let uploadDir
+let useDataDir = false
 try {
     if (fs.existsSync('/data')) {
-        fs.accessSync('/data', fs.constants.W_OK);
-        useDataDir = true;
+        fs.accessSync('/data', fs.constants.W_OK)
+        useDataDir = true
     }
 } catch (err) {
-    console.warn('[Uploads Warning] /data directory exists but is not writable:', err.message);
+    console.warn('[Uploads Warning] /data directory exists but is not writable:', err.message)
 }
 
 uploadDir = useDataDir
     ? '/data/uploads'
-    : path.join(__dirname, 'uploads');
+    : path.join(__dirname, 'uploads')
 
 if (!fs.existsSync(uploadDir)) {
     try {
-        fs.mkdirSync(uploadDir, { recursive: true });
+        fs.mkdirSync(uploadDir, { recursive: true })
     } catch (err) {
-        console.error('[Uploads Error] Failed to create upload directory at', uploadDir, err.message);
+        console.error('[Uploads Error] Failed to create upload directory at', uploadDir, err.message)
         if (useDataDir) {
-            console.log('[Uploads] Falling back to local uploads directory.');
-            uploadDir = path.join(__dirname, 'uploads');
+            console.log('[Uploads] Falling back to local uploads directory.')
+            uploadDir = path.join(__dirname, 'uploads')
             if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
+                fs.mkdirSync(uploadDir, { recursive: true })
             }
         }
     }
@@ -87,79 +87,79 @@ const storage = supabase
     ? multer.memoryStorage()
     : multer.diskStorage({
         destination: (req, file, cb) => {
-            cb(null, uploadDir);
+            cb(null, uploadDir)
         },
         filename: (req, file, cb) => {
-            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-            cb(null, uniqueSuffix + path.extname(file.originalname));
-        }
-    });
-const ALLOWED_EXTENSIONS = ['.epub', '.pdf', '.mobi', '.prc', '.azw', '.azw3', '.fb2', '.fbz', '.cbz', '.cbr', '.cb7', '.cbt'];
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9)
+            cb(null, uniqueSuffix + path.extname(file.originalname))
+        },
+    })
+const ALLOWED_EXTENSIONS = ['.epub', '.pdf', '.mobi', '.prc', '.azw', '.azw3', '.fb2', '.fbz', '.cbz', '.cbr', '.cb7', '.cbt']
 
 const upload = multer({
     storage,
     limits: { fileSize: 50 * 1024 * 1024 }, // Limit files to 50MB to support large PDFs and e-books
     fileFilter: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
+        const ext = path.extname(file.originalname).toLowerCase()
         if (!ALLOWED_EXTENSIONS.includes(ext)) {
-            return cb(new Error('Unsupported file format. Supported formats: EPUB, PDF, MOBI, AZW, FB2, CBZ, CBR.'));
+            return cb(new Error('Unsupported file format. Supported formats: EPUB, PDF, MOBI, AZW, FB2, CBZ, CBR.'))
         }
-        cb(null, true);
-    }
-});
+        cb(null, true)
+    },
+})
 
-app.use(express.json());
-app.use(cookieParser());
+app.use(express.json())
+app.use(cookieParser())
 
 // Serve static files from root
-app.use(express.static(__dirname));
-app.use('/uploads', express.static(uploadDir));
+app.use(express.static(__dirname))
+app.use('/uploads', express.static(uploadDir))
 
 // Route to serve the main reader page at the root URL
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'reader.html'));
-});
+    res.sendFile(path.join(__dirname, 'reader.html'))
+})
 
 // Lightweight health check endpoint with DB check for platform monitoring
 app.get('/health', async (req, res) => {
     try {
-        await dbGet('SELECT 1');
-        res.status(200).json({ status: 'ok', database: 'connected', timestamp: new Date().toISOString() });
+        await dbGet('SELECT 1')
+        res.status(200).json({ status: 'ok', database: 'connected', timestamp: new Date().toISOString() })
     } catch (err) {
-        console.error('[Health Check Failure]', err);
-        res.status(500).json({ status: 'error', database: err.message, timestamp: new Date().toISOString() });
+        console.error('[Health Check Failure]', err)
+        res.status(500).json({ status: 'error', database: err.message, timestamp: new Date().toISOString() })
     }
-});
+})
 
 // Helper to parse cookies
 function parseCookies(cookieStr) {
-    const list = {};
-    if (!cookieStr) return list;
+    const list = {}
+    if (!cookieStr) return list
     cookieStr.split(';').forEach(c => {
-        const parts = c.split('=');
-        list[parts.shift().trim()] = decodeURI(parts.join('='));
-    });
-    return list;
+        const parts = c.split('=')
+        list[parts.shift().trim()] = decodeURI(parts.join('='))
+    })
+    return list
 }
 
 
 // Helper to construct Discord OAuth redirect URI dynamically
 function getRedirectUri(req) {
     if (process.env.DISCORD_REDIRECT_URI) {
-        return process.env.DISCORD_REDIRECT_URI;
+        return process.env.DISCORD_REDIRECT_URI
     }
-    const host = req.headers.host || '';
-    const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
-    return `${protocol}://${host}/api/auth/discord/callback`;
+    const host = req.headers.host || ''
+    const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http')
+    return `${protocol}://${host}/api/auth/discord/callback`
 }
 
 // Helper to insert or update user records in SQLite
 async function upsertUser({ discord_id, username, avatar_url, color }) {
-    const existing = await dbGet('SELECT * FROM users WHERE discord_id = ?', [discord_id]);
-    const finalName = username || existing?.username || (discord_id === 'mock-id-local' ? 'Local_Tester' : 'User_' + String(discord_id).slice(-4));
-    const finalAvatar = avatar_url || existing?.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png';
-    const presets = ['#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#03a9f4', '#00bcd4', '#009688', '#259b24', '#ff9800', '#ff5722'];
-    const finalColor = color || existing?.color || presets[Math.floor(Math.random() * presets.length)];
+    const existing = await dbGet('SELECT * FROM users WHERE discord_id = ?', [discord_id])
+    const finalName = username || existing?.username || (discord_id === 'mock-id-local' ? 'Local_Tester' : 'User_' + String(discord_id).slice(-4))
+    const finalAvatar = avatar_url || existing?.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'
+    const presets = ['#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#03a9f4', '#00bcd4', '#009688', '#259b24', '#ff9800', '#ff5722']
+    const finalColor = color || existing?.color || presets[Math.floor(Math.random() * presets.length)]
 
     await dbRun(`
         INSERT INTO users (discord_id, username, avatar_url, color, last_login)
@@ -169,86 +169,86 @@ async function upsertUser({ discord_id, username, avatar_url, color }) {
             avatar_url = excluded.avatar_url,
             color = excluded.color,
             last_login = excluded.last_login
-    `, [discord_id, finalName, finalAvatar, finalColor, new Date().toISOString()]);
+    `, [discord_id, finalName, finalAvatar, finalColor, new Date().toISOString()])
 
-    return await dbGet('SELECT * FROM users WHERE discord_id = ?', [discord_id]);
+    return await dbGet('SELECT * FROM users WHERE discord_id = ?', [discord_id])
 }
 
 // Helper middleware to get authenticated user from JWT cookie
 async function getAuthUser(req) {
-    let token = req.cookies?.token;
+    let token = req.cookies?.token
     if (!token && req.headers?.cookie) {
-        const cookies = parseCookies(req.headers.cookie);
-        token = cookies.token;
+        const cookies = parseCookies(req.headers.cookie)
+        token = cookies.token
     }
-    if (!token) return null;
+    if (!token) return null
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
-        let user = await dbGet('SELECT * FROM users WHERE discord_id = ?', [payload.discord_id]);
+        const payload = jwt.verify(token, JWT_SECRET)
+        let user = await dbGet('SELECT * FROM users WHERE discord_id = ?', [payload.discord_id])
         if (!user) {
-            user = await upsertUser({ discord_id: payload.discord_id });
+            user = await upsertUser({ discord_id: payload.discord_id })
         }
-        return user || null;
+        return user || null
     } catch (e) {
-        console.warn('[Auth Warning] JWT verification error:', e.message);
-        return null;
+        console.warn('[Auth Warning] JWT verification error:', e.message)
+        return null
     }
 }
 
 // Get authenticated user or auto-create a Guest user profile
 async function getOrCreateAuthUser(req, res) {
-    let user = await getAuthUser(req);
+    let user = await getAuthUser(req)
     if (!user) {
-        const guestId = 'guest-' + Math.random().toString(36).substring(2, 10);
-        const avatarIdx = Math.floor(Math.random() * 5);
+        const guestId = 'guest-' + Math.random().toString(36).substring(2, 10)
+        const avatarIdx = Math.floor(Math.random() * 5)
         user = await upsertUser({
             discord_id: guestId,
             username: 'Guest_' + guestId.slice(-4),
-            avatar_url: `https://cdn.discordapp.com/embed/avatars/${avatarIdx}.png`
-        });
+            avatar_url: `https://cdn.discordapp.com/embed/avatars/${avatarIdx}.png`,
+        })
         if (res) {
-            const sessionToken = jwt.sign({ discord_id: user.discord_id, isGuest: true }, JWT_SECRET, { expiresIn: '7d' });
-            res.cookie('token', sessionToken, getCookieOptions(req));
+            const sessionToken = jwt.sign({ discord_id: user.discord_id, isGuest: true }, JWT_SECRET, { expiresIn: '7d' })
+            res.cookie('token', sessionToken, getCookieOptions(req))
         }
     }
-    return user;
+    return user
 }
 
 // --- Discord OAuth2 API Routes ---
 
 // 1. Redirect to Discord OAuth2 or login mock user if running locally or keys are missing
 app.get('/api/auth/discord', async (req, res) => {
-    const host = req.headers.host || '';
-    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1') || req.query.mock === 'true';
-    const forceReal = req.query.real === 'true';
+    const host = req.headers.host || ''
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1') || req.query.mock === 'true'
+    const forceReal = req.query.real === 'true'
 
     if ((isLocalhost && !forceReal) || !DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
-        console.log('[Auth] Local mode or missing Discord credentials. Logging in as Local Tester.');
+        console.log('[Auth] Local mode or missing Discord credentials. Logging in as Local Tester.')
         const mockUser = await upsertUser({
             discord_id: 'mock-id-local',
             username: 'Local_Tester',
             avatar_url: 'https://cdn.discordapp.com/embed/avatars/0.png',
-            color: '#3b82f6'
-        });
+            color: '#3b82f6',
+        })
 
-        const sessionToken = jwt.sign({ discord_id: mockUser.discord_id }, JWT_SECRET, { expiresIn: '7d' });
-        res.cookie('token', sessionToken, getCookieOptions(req));
-        return res.redirect('/');
+        const sessionToken = jwt.sign({ discord_id: mockUser.discord_id }, JWT_SECRET, { expiresIn: '7d' })
+        res.cookie('token', sessionToken, getCookieOptions(req))
+        return res.redirect('/')
     }
 
-    const redirectUri = getRedirectUri(req);
-    const authUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify`;
-    res.redirect(authUrl);
-});
+    const redirectUri = getRedirectUri(req)
+    const authUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify`
+    res.redirect(authUrl)
+})
 
 // 2. OAuth2 Callback
 app.get('/api/auth/discord/callback', async (req, res) => {
-    const { code } = req.query;
+    const { code } = req.query
     if (!code) {
-        return res.status(400).send('Authorization code missing');
+        return res.status(400).send('Authorization code missing')
     }
 
-    const redirectUri = getRedirectUri(req);
+    const redirectUri = getRedirectUri(req)
 
     try {
         const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
@@ -258,106 +258,106 @@ app.get('/api/auth/discord/callback', async (req, res) => {
                 client_secret: DISCORD_CLIENT_SECRET,
                 grant_type: 'authorization_code',
                 code,
-                redirect_uri: redirectUri
+                redirect_uri: redirectUri,
             }),
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        })
 
         if (!tokenResponse.ok) {
-            const errBody = await tokenResponse.text();
-            throw new Error(`Token exchange failed: ${errBody}`);
+            const errBody = await tokenResponse.text()
+            throw new Error(`Token exchange failed: ${errBody}`)
         }
 
-        const tokenData = await tokenResponse.json();
-        const accessToken = tokenData.access_token;
+        const tokenData = await tokenResponse.json()
+        const accessToken = tokenData.access_token
 
         const userResponse = await fetch('https://discord.com/api/users/@me', {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        });
+            headers: { Authorization: `Bearer ${accessToken}` },
+        })
 
         if (!userResponse.ok) {
-            throw new Error('Failed to fetch user profile from Discord');
+            throw new Error('Failed to fetch user profile from Discord')
         }
 
-        const userData = await userResponse.json();
+        const userData = await userResponse.json()
         const avatarUrl = userData.avatar
             ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
-            : `https://cdn.discordapp.com/embed/avatars/${userData.discriminator % 5}.png`;
+            : `https://cdn.discordapp.com/embed/avatars/${userData.discriminator % 5}.png`
 
         await upsertUser({
             discord_id: userData.id,
             username: userData.username,
-            avatar_url: avatarUrl
-        });
+            avatar_url: avatarUrl,
+        })
 
         // Migrate any previous guest session activity to the authenticated Discord user
-        const previousToken = req.cookies?.token;
+        const previousToken = req.cookies?.token
         if (previousToken) {
             try {
-                const prevPayload = jwt.verify(previousToken, JWT_SECRET);
+                const prevPayload = jwt.verify(previousToken, JWT_SECRET)
                 if (prevPayload.discord_id && prevPayload.discord_id.startsWith('guest-') && prevPayload.discord_id !== userData.id) {
-                    const guestId = prevPayload.discord_id;
-                    await dbRun('UPDATE OR IGNORE room_members SET discord_id = ? WHERE discord_id = ?', [userData.id, guestId]);
-                    await dbRun('UPDATE OR IGNORE highlights SET discord_id = ? WHERE discord_id = ?', [userData.id, guestId]);
-                    await dbRun('UPDATE OR IGNORE rooms SET creator_id = ? WHERE creator_id = ?', [userData.id, guestId]);
-                    await dbRun('DELETE FROM users WHERE discord_id = ?', [guestId]);
-                    console.log(`[Guest Migration] Migrated guest ${guestId} to Discord user ${userData.username} (${userData.id})`);
+                    const guestId = prevPayload.discord_id
+                    await dbRun('UPDATE OR IGNORE room_members SET discord_id = ? WHERE discord_id = ?', [userData.id, guestId])
+                    await dbRun('UPDATE OR IGNORE highlights SET discord_id = ? WHERE discord_id = ?', [userData.id, guestId])
+                    await dbRun('UPDATE OR IGNORE rooms SET creator_id = ? WHERE creator_id = ?', [userData.id, guestId])
+                    await dbRun('DELETE FROM users WHERE discord_id = ?', [guestId])
+                    console.log(`[Guest Migration] Migrated guest ${guestId} to Discord user ${userData.username} (${userData.id})`)
                 }
             } catch (err) {
-                console.warn('[Guest Migration Warning]', err.message);
+                console.warn('[Guest Migration Warning]', err.message)
             }
         }
 
-        const sessionToken = jwt.sign({ discord_id: userData.id }, JWT_SECRET, { expiresIn: '7d' });
-        res.cookie('token', sessionToken, getCookieOptions(req));
+        const sessionToken = jwt.sign({ discord_id: userData.id }, JWT_SECRET, { expiresIn: '7d' })
+        res.cookie('token', sessionToken, getCookieOptions(req))
 
-        res.redirect('/');
+        res.redirect('/')
     } catch (err) {
-        console.error('[Auth Error]', err);
-        res.status(500).send(`Authentication error: ${err.message}`);
+        console.error('[Auth Error]', err)
+        res.status(500).send(`Authentication error: ${err.message}`)
     }
-});
+})
 
 // 3. User profile endpoint
 app.get('/api/auth/me', async (req, res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    const user = await getAuthUser(req);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    res.setHeader('Pragma', 'no-cache')
+    res.setHeader('Expires', '0')
+    const user = await getAuthUser(req)
     if (!user) {
-        return res.json({ loggedIn: false });
+        return res.json({ loggedIn: false })
     }
-    const isGuest = user.discord_id.startsWith('guest-');
-    res.json({ loggedIn: true, isGuest, user });
-});
+    const isGuest = user.discord_id.startsWith('guest-')
+    res.json({ loggedIn: true, isGuest, user })
+})
 
 // 4. Guest login endpoint
 app.post('/api/auth/guest', async (req, res) => {
-    const user = await getOrCreateAuthUser(req, res);
-    const isGuest = user.discord_id.startsWith('guest-');
-    res.json({ success: true, isGuest, user });
-});
+    const user = await getOrCreateAuthUser(req, res)
+    const isGuest = user.discord_id.startsWith('guest-')
+    res.json({ success: true, isGuest, user })
+})
 
 // 4. Logout endpoint
 app.post('/api/auth/logout', (req, res) => {
-    res.clearCookie('token', { path: '/' });
-    res.json({ success: true });
-});
+    res.clearCookie('token', { path: '/' })
+    res.json({ success: true })
+})
 
 // Admin and limits bypass check
 function isLimitExempt(user) {
-    if (!user) return false;
-    const admins = process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',').map(u => u.trim()) : [];
-    return admins.includes(user.username) || user.username === 'gabrielbaiano_';
+    if (!user) return false
+    const admins = process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',').map(u => u.trim()) : []
+    return admins.includes(user.username) || user.username === 'gabrielbaiano_'
 }
 
 // Get rooms for the logged-in user (rooms they created or joined)
 app.get('/api/my-rooms', async (req, res) => {
-    const user = await getAuthUser(req);
+    const user = await getAuthUser(req)
     if (!user) {
-        return res.status(401).json({ error: 'Authentication required.' });
+        return res.status(401).json({ error: 'Authentication required.' })
     }
-    
+
     try {
         // Find rooms where the user is either the creator OR has progress records OR has highlights
         const rooms = await dbAll(`
@@ -366,38 +366,38 @@ app.get('/api/my-rooms', async (req, res) => {
             LEFT JOIN highlights h ON r.room_id = h.room_id
             WHERE r.creator_id = ? OR m.discord_id = ? OR h.discord_id = ?
             ORDER BY r.last_active DESC
-        `, [user.discord_id, user.discord_id, user.discord_id]);
-        
+        `, [user.discord_id, user.discord_id, user.discord_id])
+
         // Resolve signed URLs or local path checks dynamically
         const resolvedRooms = await Promise.all(rooms.map(async (room) => {
-            let bookPath = room.book_path;
-            let hasBook = false;
-            
+            let bookPath = room.book_path
+            let hasBook = false
+
             if (room.book_path && room.book_path.startsWith('supabase://')) {
                 if (supabase) {
-                    const fileKey = room.book_path.replace('supabase://', '');
-                    const { data: signedData } = await supabase.storage.from('books').createSignedUrl(fileKey, 86400);
+                    const fileKey = room.book_path.replace('supabase://', '')
+                    const { data: signedData } = await supabase.storage.from('books').createSignedUrl(fileKey, 86400)
                     if (signedData && signedData.signedUrl) {
-                        bookPath = signedData.signedUrl;
-                        hasBook = true;
+                        bookPath = signedData.signedUrl
+                        hasBook = true
                     }
                 }
             } else if (room.book_path) {
-                const filename = path.basename(room.book_path);
-                const physicalPath = path.join(uploadDir, filename);
-                hasBook = fs.existsSync(physicalPath);
+                const filename = path.basename(room.book_path)
+                const physicalPath = path.join(uploadDir, filename)
+                hasBook = fs.existsSync(physicalPath)
             }
-            
+
             // Count distinct readers that joined this room historically
             const memberCountRow = await dbGet(
                 'SELECT COUNT(DISTINCT discord_id) as count FROM room_members WHERE room_id = ?',
-                [room.room_id]
-            );
-            const memberCount = memberCountRow ? memberCountRow.count : 0;
+                [room.room_id],
+            )
+            const memberCount = memberCountRow ? memberCountRow.count : 0
 
             // Count live online readers in this room right now from in-memory clients
             const onlineCount = Array.from(clients.values())
-                .filter(c => c.roomId === room.room_id).length;
+                .filter(c => c.roomId === room.room_id).length
 
             return {
                 roomId: room.room_id,
@@ -409,114 +409,114 @@ app.get('/api/my-rooms', async (req, res) => {
                 hasBook,
                 memberCount,
                 onlineCount,
-                creatorId: room.creator_id
-            };
-        }));
-        
-        res.json(resolvedRooms);
+                creatorId: room.creator_id,
+            }
+        }))
+
+        res.json(resolvedRooms)
     } catch (e) {
-        console.error('[API Error] Failed to fetch user rooms:', e);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('[API Error] Failed to fetch user rooms:', e)
+        res.status(500).json({ error: 'Internal server error' })
     }
-});
+})
 
 // --- Book Club SQLite Rooms API ---
 
 // Create Room via epub upload
 app.post('/api/rooms', upload.single('book'), async (req, res) => {
-    const user = await getOrCreateAuthUser(req, res);
+    const user = await getOrCreateAuthUser(req, res)
 
     if (!req.file) {
-        return res.status(400).json({ error: 'No book file uploaded' });
+        return res.status(400).json({ error: 'No book file uploaded' })
     }
 
     // Security Limits (Excludes Whitelisted Admins like gabrielbaiano_)
     if (!isLimitExempt(user)) {
         try {
             // 1. Hourly rate-limit check (Max 5 rooms per hour)
-            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
             const hourlyCountRow = await dbGet(
                 'SELECT COUNT(*) as count FROM rooms WHERE creator_id = ? AND created_at > ?',
-                [user.discord_id, oneHourAgo]
-            );
+                [user.discord_id, oneHourAgo],
+            )
             if (hourlyCountRow && hourlyCountRow.count >= 5) {
-                return res.status(429).json({ error: 'Rate limit exceeded: You can only create up to 5 rooms per hour.' });
+                return res.status(429).json({ error: 'Rate limit exceeded: You can only create up to 5 rooms per hour.' })
             }
 
             // 2. Active rooms limit check (Max 4 active rooms containing books)
             const activeCountRow = await dbGet(
                 "SELECT COUNT(*) as count FROM rooms WHERE creator_id = ? AND book_path IS NOT NULL AND book_path != ''",
-                [user.discord_id]
-            );
+                [user.discord_id],
+            )
             if (activeCountRow && activeCountRow.count >= 4) {
-                return res.status(400).json({ error: 'Active rooms limit exceeded: You can have at most 4 active rooms at the same time.' });
+                return res.status(400).json({ error: 'Active rooms limit exceeded: You can have at most 4 active rooms at the same time.' })
             }
         } catch (err) {
-            console.error('[Security Check Error]', err);
+            console.error('[Security Check Error]', err)
         }
     }
 
-    const roomId = Math.random().toString(36).substring(2, 11);
-    const title = req.body.title || 'Untitled';
-    const author = req.body.author || 'Unknown';
-    let bookPath = '';
+    const roomId = Math.random().toString(36).substring(2, 11)
+    const title = req.body.title || 'Untitled'
+    const author = req.body.author || 'Unknown'
+    let bookPath = ''
 
     try {
         if (supabase) {
             // Upload to Supabase Storage
-            const fileExt = path.extname(req.file.originalname).toLowerCase() || '.epub';
-            const fileKey = `${roomId}-${Date.now()}${fileExt}`;
+            const fileExt = path.extname(req.file.originalname).toLowerCase() || '.epub'
+            const fileKey = `${roomId}-${Date.now()}${fileExt}`
             const { data, error } = await supabase.storage
                 .from('books')
                 .upload(fileKey, req.file.buffer, {
                     contentType: req.file.mimetype || 'application/epub+zip',
-                    upsert: true
-                });
-            
+                    upsert: true,
+                })
+
             if (error) {
-                console.error('[Supabase Upload Error]:', error);
-                throw error;
+                console.error('[Supabase Upload Error]:', error)
+                throw error
             }
-            
-            bookPath = `supabase://${fileKey}`;
-            console.log(`[Supabase Uploaded] Room ID: ${roomId}, File: ${fileKey}`);
+
+            bookPath = `supabase://${fileKey}`
+            console.log(`[Supabase Uploaded] Room ID: ${roomId}, File: ${fileKey}`)
         } else {
             // Local fallback
-            bookPath = `/uploads/${req.file.filename}`;
-            console.log(`[Local Uploaded] Room ID: ${roomId}, File: ${req.file.filename}`);
+            bookPath = `/uploads/${req.file.filename}`
+            console.log(`[Local Uploaded] Room ID: ${roomId}, File: ${req.file.filename}`)
         }
 
-        const nowStr = new Date().toISOString();
+        const nowStr = new Date().toISOString()
         await dbRun(`
             INSERT INTO rooms (room_id, book_path, filename, title, author, created_at, last_active, creator_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `, [roomId, bookPath, req.file.originalname, title, author, nowStr, nowStr, user.discord_id]);
+        `, [roomId, bookPath, req.file.originalname, title, author, nowStr, nowStr, user.discord_id])
 
-        console.log(`[Room Created] Room ID: ${roomId}, Book: ${title}`);
-        res.json({ roomId, bookPath, title, author });
+        console.log(`[Room Created] Room ID: ${roomId}, Book: ${title}`)
+        res.json({ roomId, bookPath, title, author })
     } catch (e) {
-        console.error('[API Error] Failed to create room:', e);
-        res.status(500).json({ error: 'Failed to create room' });
+        console.error('[API Error] Failed to create room:', e)
+        res.status(500).json({ error: 'Failed to create room' })
     }
-});
+})
 
 // Get room details
 app.get('/api/rooms/:roomId', async (req, res) => {
     try {
-        const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [req.params.roomId]);
+        const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [req.params.roomId])
         if (!room) {
-            return res.status(404).json({ error: 'Room not found' });
+            return res.status(404).json({ error: 'Room not found' })
         }
 
         // Limit user active room participation to 4 rooms maximum
-        const user = await getAuthUser(req);
+        const user = await getAuthUser(req)
         if (user) {
             if (!isLimitExempt(user)) {
                 // Check if user is already a member
                 const isMember = await dbGet(
                     'SELECT 1 FROM room_members WHERE room_id = ? AND discord_id = ?',
-                    [room.room_id, user.discord_id]
-                );
+                    [room.room_id, user.discord_id],
+                )
 
                 if (!isMember && room.book_path !== '') {
                     const participationCountRow = await dbGet(`
@@ -524,40 +524,40 @@ app.get('/api/rooms/:roomId', async (req, res) => {
                         FROM rooms r
                         JOIN room_members rm ON r.room_id = rm.room_id
                         WHERE rm.discord_id = ? AND r.book_path IS NOT NULL AND r.book_path != ''
-                    `, [user.discord_id]);
+                    `, [user.discord_id])
 
                     if (participationCountRow && participationCountRow.count >= 4) {
-                        return res.status(400).json({ error: 'Participation limit exceeded: You cannot participate in more than 4 active rooms at the same time.' });
+                        return res.status(400).json({ error: 'Participation limit exceeded: You cannot participate in more than 4 active rooms at the same time.' })
                     }
                 }
             }
         }
 
         // Reset countdown by updating last_active
-        const nowStr = new Date().toISOString();
-        await dbRun('UPDATE rooms SET last_active = ? WHERE room_id = ?', [nowStr, room.room_id]);
-        
-        let bookPath = room.book_path;
-        let hasBook = false;
+        const nowStr = new Date().toISOString()
+        await dbRun('UPDATE rooms SET last_active = ? WHERE room_id = ?', [nowStr, room.room_id])
+
+        let bookPath = room.book_path
+        let hasBook = false
 
         if (room.book_path && room.book_path.startsWith('supabase://')) {
             if (supabase) {
-                const fileKey = room.book_path.replace('supabase://', '');
+                const fileKey = room.book_path.replace('supabase://', '')
                 // Create signed URL for download (expires in 24 hours)
                 const { data: signedData } = await supabase.storage
                     .from('books')
-                    .createSignedUrl(fileKey, 86400);
+                    .createSignedUrl(fileKey, 86400)
 
                 if (signedData && signedData.signedUrl) {
-                    bookPath = signedData.signedUrl;
-                    hasBook = true;
+                    bookPath = signedData.signedUrl
+                    hasBook = true
                 }
             }
         } else if (room.book_path) {
             // Local fallback
-            const filename = path.basename(room.book_path);
-            const physicalPath = path.join(uploadDir, filename);
-            hasBook = fs.existsSync(physicalPath);
+            const filename = path.basename(room.book_path)
+            const physicalPath = path.join(uploadDir, filename)
+            hasBook = fs.existsSync(physicalPath)
         }
 
         res.json({
@@ -565,283 +565,283 @@ app.get('/api/rooms/:roomId', async (req, res) => {
             bookPath,
             title: room.title,
             author: room.author,
-            hasBook
-        });
+            hasBook,
+        })
     } catch (e) {
-        console.error('[API Error] Failed to fetch room:', e);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('[API Error] Failed to fetch room:', e)
+        res.status(500).json({ error: 'Internal server error' })
     }
-});
+})
 
 // Delete a room (Creator-only, deletes DB records and book file, disconnects active clients)
 app.delete('/api/rooms/:roomId', async (req, res) => {
-    const user = await getAuthUser(req);
+    const user = await getAuthUser(req)
     if (!user) {
-        return res.status(401).json({ error: 'Authentication required. Please login with Discord.' });
+        return res.status(401).json({ error: 'Authentication required. Please login with Discord.' })
     }
 
-    const { roomId } = req.params;
+    const { roomId } = req.params
 
     try {
-        const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [roomId]);
+        const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [roomId])
         if (!room) {
-            return res.status(404).json({ error: 'Room not found' });
+            return res.status(404).json({ error: 'Room not found' })
         }
 
         // Limit check: creator, exempt admin, or any member if room is expired (book_path is empty)
-        const isExpired = !room.book_path || room.book_path === '';
+        const isExpired = !room.book_path || room.book_path === ''
         if (!isExpired && room.creator_id !== user.discord_id && !isLimitExempt(user)) {
-            return res.status(403).json({ error: 'Only the creator of the room can delete active rooms.' });
+            return res.status(403).json({ error: 'Only the creator of the room can delete active rooms.' })
         }
 
         // 1. Delete physical book file if it exists
         if (room.book_path) {
             if (room.book_path.startsWith('supabase://')) {
                 if (supabase) {
-                    const fileKey = room.book_path.replace('supabase://', '');
-                    const { error } = await supabase.storage.from('books').remove([fileKey]);
+                    const fileKey = room.book_path.replace('supabase://', '')
+                    const { error } = await supabase.storage.from('books').remove([fileKey])
                     if (error) {
-                        console.error('[Delete Room Warning] Failed to delete from Supabase:', error);
+                        console.error('[Delete Room Warning] Failed to delete from Supabase:', error)
                     }
                 }
             } else {
-                const filename = path.basename(room.book_path);
-                const filePath = path.join(uploadDir, filename);
+                const filename = path.basename(room.book_path)
+                const filePath = path.join(uploadDir, filename)
                 if (fs.existsSync(filePath)) {
                     fs.unlink(filePath, (err) => {
-                        if (err) console.error('[Delete Room Warning] Failed to delete local file:', err);
-                    });
+                        if (err) console.error('[Delete Room Warning] Failed to delete local file:', err)
+                    })
                 }
             }
         }
 
         // 2. Cascade delete database records manually to be safe
-        await dbRun('DELETE FROM highlights WHERE room_id = ?', [roomId]);
-        await dbRun('DELETE FROM room_members WHERE room_id = ?', [roomId]);
-        await dbRun('DELETE FROM rooms WHERE room_id = ?', [roomId]);
+        await dbRun('DELETE FROM highlights WHERE room_id = ?', [roomId])
+        await dbRun('DELETE FROM room_members WHERE room_id = ?', [roomId])
+        await dbRun('DELETE FROM rooms WHERE room_id = ?', [roomId])
 
-        console.log(`[Room Deleted] Room ID: ${roomId} deleted by ${user.username}`);
+        console.log(`[Room Deleted] Room ID: ${roomId} deleted by ${user.username}`)
 
         // 3. Disconnect any active readers via WebSockets
         for (const [clientWs, clientInfo] of clients.entries()) {
             if (clientInfo.roomId === roomId) {
                 try {
-                    clientWs.send(JSON.stringify({ type: 'room_deleted', roomId }));
+                    clientWs.send(JSON.stringify({ type: 'room_deleted', roomId }))
                     setTimeout(() => {
-                        try { clientWs.close(); } catch (_) {}
-                    }, 100);
+                        try { clientWs.close() } catch (_) {}
+                    }, 100)
                 } catch (wsErr) {
-                    console.error('[Delete Room Warning] Failed to send WS close signal:', wsErr);
+                    console.error('[Delete Room Warning] Failed to send WS close signal:', wsErr)
                 }
             }
         }
 
-        res.json({ success: true, message: 'Room successfully deleted' });
+        res.json({ success: true, message: 'Room successfully deleted' })
     } catch (e) {
-        console.error('[API Error] Failed to delete room:', e);
-        res.status(500).json({ error: 'Failed to delete room' });
+        console.error('[API Error] Failed to delete room:', e)
+        res.status(500).json({ error: 'Failed to delete room' })
     }
-});
+})
 
 // Leave a room (Removes user from membership, disconnects active WebSocket if online)
 app.post('/api/rooms/:roomId/leave', async (req, res) => {
-    const user = await getAuthUser(req);
+    const user = await getAuthUser(req)
     if (!user) {
-        return res.status(401).json({ error: 'Authentication required. Please login with Discord.' });
+        return res.status(401).json({ error: 'Authentication required. Please login with Discord.' })
     }
 
-    const { roomId } = req.params;
+    const { roomId } = req.params
 
     try {
-        const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [roomId]);
+        const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [roomId])
         if (!room) {
-            return res.status(404).json({ error: 'Room not found' });
+            return res.status(404).json({ error: 'Room not found' })
         }
 
         // Creators cannot leave their own room (they must delete it instead)
         if (room.creator_id === user.discord_id) {
-            return res.status(400).json({ error: 'Creators cannot leave their own room. You can delete it instead.' });
+            return res.status(400).json({ error: 'Creators cannot leave their own room. You can delete it instead.' })
         }
 
         // 1. Remove from room_members database table
-        await dbRun('DELETE FROM room_members WHERE room_id = ? AND discord_id = ?', [roomId, user.discord_id]);
+        await dbRun('DELETE FROM room_members WHERE room_id = ? AND discord_id = ?', [roomId, user.discord_id])
 
         // 2. If user has active WebSocket session, disconnect it (will broadcast member_left automatically)
-        let disconnected = false;
+        let disconnected = false
         for (const [clientWs, clientInfo] of clients.entries()) {
             if (clientInfo.roomId === roomId && clientInfo.discordId === user.discord_id) {
                 try {
-                    clientWs.close();
-                    disconnected = true;
+                    clientWs.close()
+                    disconnected = true
                 } catch (_) {}
             }
         }
 
-        console.log(`[Room Left] ${user.username} left Room ID: ${roomId}`);
-        res.json({ success: true, message: 'Room successfully left', disconnected });
+        console.log(`[Room Left] ${user.username} left Room ID: ${roomId}`)
+        res.json({ success: true, message: 'Room successfully left', disconnected })
     } catch (e) {
-        console.error('[API Error] Failed to leave room:', e);
-        res.status(500).json({ error: 'Failed to leave room' });
+        console.error('[API Error] Failed to leave room:', e)
+        res.status(500).json({ error: 'Failed to leave room' })
     }
-});
+})
 // Re-upload a book for an expired room session
 app.post('/api/rooms/:roomId/reupload', upload.single('book'), async (req, res) => {
-    const user = await getAuthUser(req);
+    const user = await getAuthUser(req)
     if (!user) {
-        return res.status(401).json({ error: 'Authentication required. Please login with Discord.' });
+        return res.status(401).json({ error: 'Authentication required. Please login with Discord.' })
     }
 
     if (!req.file) {
-        return res.status(400).json({ error: 'No book file uploaded' });
+        return res.status(400).json({ error: 'No book file uploaded' })
     }
 
-    const { roomId } = req.params;
-    let bookPath = '';
+    const { roomId } = req.params
+    let bookPath = ''
 
     try {
-        const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [roomId]);
+        const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [roomId])
         if (!room) {
-            return res.status(404).json({ error: 'Room not found' });
+            return res.status(404).json({ error: 'Room not found' })
         }
 
         if (supabase) {
             // Upload to Supabase Storage
-            const fileExt = path.extname(req.file.originalname).toLowerCase() || '.epub';
-            const fileKey = `${roomId}-${Date.now()}${fileExt}`;
+            const fileExt = path.extname(req.file.originalname).toLowerCase() || '.epub'
+            const fileKey = `${roomId}-${Date.now()}${fileExt}`
             const { data, error } = await supabase.storage
                 .from('books')
                 .upload(fileKey, req.file.buffer, {
                     contentType: req.file.mimetype || 'application/epub+zip',
-                    upsert: true
-                });
-            
+                    upsert: true,
+                })
+
             if (error) {
-                console.error('[Supabase Reupload Error]:', error);
-                throw error;
+                console.error('[Supabase Reupload Error]:', error)
+                throw error
             }
-            
-            bookPath = `supabase://${fileKey}`;
-            console.log(`[Supabase Restored] Room ID: ${roomId}, File: ${fileKey}`);
+
+            bookPath = `supabase://${fileKey}`
+            console.log(`[Supabase Restored] Room ID: ${roomId}, File: ${fileKey}`)
         } else {
             // Local fallback
-            bookPath = `/uploads/${req.file.filename}`;
-            console.log(`[Local Restored] Room ID: ${roomId}, File: ${req.file.filename}`);
+            bookPath = `/uploads/${req.file.filename}`
+            console.log(`[Local Restored] Room ID: ${roomId}, File: ${req.file.filename}`)
         }
 
-        const nowStr = new Date().toISOString();
-        await dbRun('UPDATE rooms SET book_path = ?, last_active = ? WHERE room_id = ?', [bookPath, nowStr, roomId]);
+        const nowStr = new Date().toISOString()
+        await dbRun('UPDATE rooms SET book_path = ?, last_active = ? WHERE room_id = ?', [bookPath, nowStr, roomId])
 
         // If upload is to Supabase, generate signed link immediately to return
-        let returnPath = bookPath;
+        let returnPath = bookPath
         if (supabase && bookPath.startsWith('supabase://')) {
-            const fileKey = bookPath.replace('supabase://', '');
+            const fileKey = bookPath.replace('supabase://', '')
             const { data: signedData } = await supabase.storage
                 .from('books')
-                .createSignedUrl(fileKey, 86400);
+                .createSignedUrl(fileKey, 86400)
             if (signedData && signedData.signedUrl) {
-                returnPath = signedData.signedUrl;
+                returnPath = signedData.signedUrl
             }
         }
 
-        console.log(`[Room Restored] Room ID: ${roomId}, New book file: ${req.file.originalname}`);
+        console.log(`[Room Restored] Room ID: ${roomId}, New book file: ${req.file.originalname}`)
         res.json({
             roomId,
             bookPath: returnPath,
             title: room.title,
             author: room.author,
-            hasBook: true
-        });
+            hasBook: true,
+        })
     } catch (e) {
-        console.error('[API Error] Failed to reupload book:', e);
-        res.status(500).json({ error: 'Failed to reupload book' });
+        console.error('[API Error] Failed to reupload book:', e)
+        res.status(500).json({ error: 'Failed to reupload book' })
     }
-});
+})
 
 // --- WebSocket Collaboration Hub (SQLite Backed) ---
 
-const clients = new Map(); // ws -> { roomId, discordId, name, color, avatarUrl, wsId }
+const clients = new Map() // ws -> { roomId, discordId, name, color, avatarUrl, wsId }
 
 wss.on('connection', async (ws, req) => {
-    const wsId = Math.random().toString(36).substring(2, 9);
-    console.log(`[WS Connected] ID: ${wsId}`);
+    const wsId = Math.random().toString(36).substring(2, 9)
+    console.log(`[WS Connected] ID: ${wsId}`)
 
-    const cookieHeader = req.headers.cookie || '';
-    const cookies = parseCookies(cookieHeader);
-    const token = cookies.token;
+    const cookieHeader = req.headers.cookie || ''
+    const cookies = parseCookies(cookieHeader)
+    const token = cookies.token
 
-    let user = null;
+    let user = null
     if (token) {
         try {
-            const payload = jwt.verify(token, JWT_SECRET);
-            user = await dbGet('SELECT * FROM users WHERE discord_id = ?', [payload.discord_id]);
+            const payload = jwt.verify(token, JWT_SECRET)
+            user = await dbGet('SELECT * FROM users WHERE discord_id = ?', [payload.discord_id])
         } catch (e) {
-            console.error('[WS Auth Error] Invalid JWT session token');
+            console.error('[WS Auth Error] Invalid JWT session token')
         }
     }
 
     if (!user) {
-        const guestId = 'guest-' + Math.random().toString(36).substring(2, 10);
-        const avatarIdx = Math.floor(Math.random() * 5);
+        const guestId = 'guest-' + Math.random().toString(36).substring(2, 10)
+        const avatarIdx = Math.floor(Math.random() * 5)
         user = await upsertUser({
             discord_id: guestId,
             username: 'Guest_' + guestId.slice(-4),
-            avatar_url: `https://cdn.discordapp.com/embed/avatars/${avatarIdx}.png`
-        });
-        console.log(`[WS Auth] Auto-created guest reader: ${user.username}`);
+            avatar_url: `https://cdn.discordapp.com/embed/avatars/${avatarIdx}.png`,
+        })
+        console.log(`[WS Auth] Auto-created guest reader: ${user.username}`)
     }
 
     ws.on('message', async (message) => {
         try {
-            const data = JSON.parse(message);
+            const data = JSON.parse(message)
             switch (data.type) {
                 case 'join':
-                    await handleJoin(ws, wsId, data, user);
-                    break;
+                    await handleJoin(ws, wsId, data, user)
+                    break
                 case 'relocate':
-                    await handleRelocate(ws, data, user);
-                    break;
+                    await handleRelocate(ws, data, user)
+                    break
                 case 'update_identity':
-                    await handleUpdateIdentity(ws, data, user);
-                    break;
+                    await handleUpdateIdentity(ws, data, user)
+                    break
                 case 'add_highlight':
-                    await handleAddHighlight(ws, data, user);
-                    break;
+                    await handleAddHighlight(ws, data, user)
+                    break
                 case 'delete_highlight':
-                    await handleDeleteHighlight(ws, data, user);
-                    break;
+                    await handleDeleteHighlight(ws, data, user)
+                    break
                 case 'mousemove':
-                    handleMouseMove(ws, data);
-                    break;
+                    handleMouseMove(ws, data)
+                    break
                 default:
-                    console.warn(`[WS Warning] Unknown message type: ${data.type}`);
+                    console.warn(`[WS Warning] Unknown message type: ${data.type}`)
             }
         } catch (err) {
-            console.error('[WS Error] Failed to process message:', err);
+            console.error('[WS Error] Failed to process message:', err)
         }
-    });
+    })
 
     ws.on('close', () => {
-        handleDisconnect(ws);
-    });
-});
+        handleDisconnect(ws)
+    })
+})
 
 async function handleJoin(ws, wsId, data, user) {
-    const { roomId } = data;
-    const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [roomId]);
+    const { roomId } = data
+    const room = await dbGet('SELECT * FROM rooms WHERE room_id = ?', [roomId])
 
     if (!room) {
-        ws.send(JSON.stringify({ type: 'error', message: 'Room not found' }));
-        return;
+        ws.send(JSON.stringify({ type: 'error', message: 'Room not found' }))
+        return
     }
 
     // Limit room to a maximum of 8 simultaneous readers
-    const activeReaders = Array.from(clients.values()).filter(c => c.roomId === roomId);
+    const activeReaders = Array.from(clients.values()).filter(c => c.roomId === roomId)
     if (activeReaders.length >= 8) {
-        const isAlreadyConnected = activeReaders.some(c => c.discordId === user.discord_id);
+        const isAlreadyConnected = activeReaders.some(c => c.discordId === user.discord_id)
         if (!isAlreadyConnected) {
-            ws.send(JSON.stringify({ type: 'error', message: 'This room is full (maximum 8 readers).' }));
-            setTimeout(() => ws.close(), 100);
-            return;
+            ws.send(JSON.stringify({ type: 'error', message: 'This room is full (maximum 8 readers).' }))
+            setTimeout(() => ws.close(), 100)
+            return
         }
     }
 
@@ -849,8 +849,8 @@ async function handleJoin(ws, wsId, data, user) {
     if (!isLimitExempt(user)) {
         const isMember = await dbGet(
             'SELECT 1 FROM room_members WHERE room_id = ? AND discord_id = ?',
-            [roomId, user.discord_id]
-        );
+            [roomId, user.discord_id],
+        )
 
         if (!isMember) {
             const participationCountRow = await dbGet(`
@@ -858,18 +858,18 @@ async function handleJoin(ws, wsId, data, user) {
                 FROM rooms r
                 JOIN room_members rm ON r.room_id = rm.room_id
                 WHERE rm.discord_id = ? AND r.book_path IS NOT NULL AND r.book_path != ''
-            `, [user.discord_id]);
+            `, [user.discord_id])
 
             if (participationCountRow && participationCountRow.count >= 4) {
-                ws.send(JSON.stringify({ type: 'error', message: 'Participation limit exceeded: You cannot participate in more than 4 active rooms at the same time.' }));
-                setTimeout(() => ws.close(), 100);
-                return;
+                ws.send(JSON.stringify({ type: 'error', message: 'Participation limit exceeded: You cannot participate in more than 4 active rooms at the same time.' }))
+                setTimeout(() => ws.close(), 100)
+                return
             }
         }
     }
 
     // Update room last_active to reset countdown
-    await dbRun('UPDATE rooms SET last_active = ? WHERE room_id = ?', [new Date().toISOString(), roomId]);
+    await dbRun('UPDATE rooms SET last_active = ? WHERE room_id = ?', [new Date().toISOString(), roomId])
 
     // Register active client info
     clients.set(ws, {
@@ -878,8 +878,8 @@ async function handleJoin(ws, wsId, data, user) {
         name: user.username,
         color: user.color,
         avatarUrl: user.avatar_url,
-        wsId
-    });
+        wsId,
+    })
 
     // Update active member in SQLite
     await dbRun(`
@@ -887,9 +887,9 @@ async function handleJoin(ws, wsId, data, user) {
         VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(room_id, discord_id) DO UPDATE SET
             last_active = excluded.last_active
-    `, [roomId, user.discord_id, null, 0, new Date().toISOString()]);
+    `, [roomId, user.discord_id, null, 0, new Date().toISOString()])
 
-    console.log(`[Join] ${user.username} joined Room: ${roomId}`);
+    console.log(`[Join] ${user.username} joined Room: ${roomId}`)
 
     // Load active room members from DB
     const membersRows = await dbAll(`
@@ -897,18 +897,18 @@ async function handleJoin(ws, wsId, data, user) {
         FROM room_members rm
         JOIN users u ON rm.discord_id = u.discord_id
         WHERE rm.room_id = ?
-    `, [roomId]);
+    `, [roomId])
 
     // Format room members state
-    const members = {};
+    const members = {}
     membersRows.forEach(row => {
         // Map to client wsId format if active in memory, or fallback to discordId
         // Find if this member is currently online/connected
         const activeClient = Array.from(clients.values()).find(
-            c => c.roomId === roomId && c.discordId === row.discord_id
-        );
-        
-        const key = activeClient ? activeClient.wsId : `offline-${row.discord_id}`;
+            c => c.roomId === roomId && c.discordId === row.discord_id,
+        )
+
+        const key = activeClient ? activeClient.wsId : `offline-${row.discord_id}`
         members[key] = {
             name: row.username,
             color: row.color,
@@ -916,9 +916,9 @@ async function handleJoin(ws, wsId, data, user) {
             cfi: row.cfi,
             fraction: row.fraction,
             chapter: row.chapter || '',
-            isOnline: !!activeClient
-        };
-    });
+            isOnline: !!activeClient,
+        }
+    })
 
     // Load all room highlights from DB
     const highlightRows = await dbAll(`
@@ -926,9 +926,9 @@ async function handleJoin(ws, wsId, data, user) {
         FROM highlights h
         JOIN users u ON h.discord_id = u.discord_id
         WHERE h.room_id = ?
-    `, [roomId]);
+    `, [roomId])
 
-    const highlights = {};
+    const highlights = {}
     highlightRows.forEach(row => {
         highlights[row.cfi] = {
             cfi: row.cfi,
@@ -937,9 +937,9 @@ async function handleJoin(ws, wsId, data, user) {
             userColor: row.user_color,
             highlightColor: row.highlight_color,
             note: row.note,
-            timestamp: row.timestamp
-        };
-    });
+            timestamp: row.timestamp,
+        }
+    })
 
     // Send room state to the joining user
     ws.send(JSON.stringify({
@@ -947,14 +947,14 @@ async function handleJoin(ws, wsId, data, user) {
         roomId,
         members,
         highlights,
-        yourId: wsId
-    }));
+        yourId: wsId,
+    }))
 
     // Fetch this joining member's saved progress to broadcast it correctly
     const myProgress = await dbGet(`
         SELECT cfi, fraction, chapter FROM room_members 
         WHERE room_id = ? AND discord_id = ?
-    `, [roomId, user.discord_id]);
+    `, [roomId, user.discord_id])
 
     // Broadcast member joined to others online in the same room
     broadcastToRoom(roomId, ws, {
@@ -967,48 +967,48 @@ async function handleJoin(ws, wsId, data, user) {
             cfi: myProgress ? myProgress.cfi : null,
             fraction: myProgress ? myProgress.fraction : 0,
             chapter: (myProgress && myProgress.chapter) ? myProgress.chapter : '',
-            isOnline: true
-        }
-    });
+            isOnline: true,
+        },
+    })
 }
 
-const pendingRelocations = new Map(); // key `${roomId}:${discordId}` -> { cfi, fraction, chapter, timestamp }
+const pendingRelocations = new Map() // key `${roomId}:${discordId}` -> { cfi, fraction, chapter, timestamp }
 
 // Periodic flush of pending relocations to SQLite database (runs every 3s)
 setInterval(async () => {
-    if (pendingRelocations.size === 0) return;
-    const entries = Array.from(pendingRelocations.entries());
-    pendingRelocations.clear();
+    if (pendingRelocations.size === 0) return
+    const entries = Array.from(pendingRelocations.entries())
+    pendingRelocations.clear()
 
     for (const [key, item] of entries) {
-        const [roomId, discordId] = key.split(':');
+        const [roomId, discordId] = key.split(':')
         try {
             await dbRun(`
                 UPDATE room_members
                 SET cfi = ?, fraction = ?, last_active = ?, chapter = ?
                 WHERE room_id = ? AND discord_id = ?
-            `, [item.cfi, item.fraction, item.timestamp, item.chapter, roomId, discordId]);
+            `, [item.cfi, item.fraction, item.timestamp, item.chapter, roomId, discordId])
         } catch (err) {
-            console.error('[DB Batch Relocate Error]', err.message);
+            console.error('[DB Batch Relocate Error]', err.message)
         }
     }
-}, 3000);
+}, 3000)
 
 function handleRelocate(ws, data, user) {
-    const client = clients.get(ws);
-    if (!client) return;
+    const client = clients.get(ws)
+    if (!client) return
 
-    const { roomId, wsId } = client;
-    const { cfi, fraction, chapter } = data;
-    const nowIso = new Date().toISOString();
+    const { roomId, wsId } = client
+    const { cfi, fraction, chapter } = data
+    const nowIso = new Date().toISOString()
 
     // Store in memory batch queue for periodic SQLite persistence
     pendingRelocations.set(`${roomId}:${user.discord_id}`, {
         cfi,
         fraction,
         chapter: chapter || '',
-        timestamp: nowIso
-    });
+        timestamp: nowIso,
+    })
 
     // Instantly broadcast to active room peers without blocking on DB write
     broadcastToRoom(roomId, ws, {
@@ -1016,22 +1016,22 @@ function handleRelocate(ws, data, user) {
         wsId,
         cfi,
         fraction,
-        chapter: chapter || ''
-    });
+        chapter: chapter || '',
+    })
 }
 
 async function handleUpdateIdentity(ws, data, user) {
-    const client = clients.get(ws);
-    if (!client) return;
+    const client = clients.get(ws)
+    if (!client) return
 
-    const { roomId, wsId } = client;
-    const { color } = data;
+    const { roomId, wsId } = client
+    const { color } = data
 
     if (color) {
-        await dbRun('UPDATE users SET color = ? WHERE discord_id = ?', [color, user.discord_id]);
-        client.color = color;
+        await dbRun('UPDATE users SET color = ? WHERE discord_id = ?', [color, user.discord_id])
+        client.color = color
 
-        console.log(`[Identity] ${user.username} updated color: ${color}`);
+        console.log(`[Identity] ${user.username} updated color: ${color}`)
 
         broadcastToRoom(roomId, null, {
             type: 'member_updated',
@@ -1040,18 +1040,18 @@ async function handleUpdateIdentity(ws, data, user) {
                 name: user.username,
                 color: color,
                 avatarUrl: user.avatar_url,
-                isOnline: true
-            }
-        });
+                isOnline: true,
+            },
+        })
     }
 }
 
 async function handleAddHighlight(ws, data, user) {
-    const client = clients.get(ws);
-    if (!client) return;
+    const client = clients.get(ws)
+    if (!client) return
 
-    const { roomId } = client;
-    const { cfi, text, highlightColor, note } = data;
+    const { roomId } = client
+    const { cfi, text, highlightColor, note } = data
 
     const highlight = {
         cfi,
@@ -1060,8 +1060,8 @@ async function handleAddHighlight(ws, data, user) {
         userColor: user.color,
         highlightColor: highlightColor || user.color,
         note: note || '',
-        timestamp: new Date().toISOString()
-    };
+        timestamp: new Date().toISOString(),
+    }
 
     await dbRun(`
         INSERT INTO highlights (cfi, room_id, text, discord_id, highlight_color, note, timestamp)
@@ -1069,34 +1069,34 @@ async function handleAddHighlight(ws, data, user) {
         ON CONFLICT(cfi, room_id) DO UPDATE SET
             note = excluded.note,
             highlight_color = excluded.highlight_color
-    `, [cfi, roomId, text, user.discord_id, highlight.highlightColor, highlight.note, highlight.timestamp]);
+    `, [cfi, roomId, text, user.discord_id, highlight.highlightColor, highlight.note, highlight.timestamp])
 
     broadcastToRoom(roomId, null, {
         type: 'highlight_added',
         cfi,
-        highlight
-    });
+        highlight,
+    })
 }
 
 async function handleDeleteHighlight(ws, data, user) {
-    const client = clients.get(ws);
-    if (!client) return;
+    const client = clients.get(ws)
+    if (!client) return
 
-    const { roomId } = client;
-    const { cfi } = data;
+    const { roomId } = client
+    const { cfi } = data
 
-    await dbRun('DELETE FROM highlights WHERE cfi = ? AND room_id = ?', [cfi, roomId]);
+    await dbRun('DELETE FROM highlights WHERE cfi = ? AND room_id = ?', [cfi, roomId])
 
     broadcastToRoom(roomId, null, {
         type: 'highlight_deleted',
-        cfi
-    });
+        cfi,
+    })
 }
 
 function handleMouseMove(ws, data) {
-    const client = clients.get(ws);
-    if (!client) return;
-    
+    const client = clients.get(ws)
+    if (!client) return
+
     broadcastToRoom(client.roomId, ws, {
         type: 'mousemove',
         wsId: client.wsId,
@@ -1104,147 +1104,147 @@ function handleMouseMove(ws, data) {
         color: client.color,
         x: data.x,
         y: data.y,
-        index: data.index
-    });
+        index: data.index,
+    })
 }
 
 function handleDisconnect(ws) {
-    const client = clients.get(ws);
-    if (!client) return;
+    const client = clients.get(ws)
+    if (!client) return
 
-    const { roomId, wsId, name, discordId } = client;
-    clients.delete(ws);
+    const { roomId, wsId, name, discordId } = client
+    clients.delete(ws)
 
     // Flush any pending position relocation immediately on disconnect
-    const key = `${roomId}:${discordId}`;
+    const key = `${roomId}:${discordId}`
     if (pendingRelocations.has(key)) {
-        const item = pendingRelocations.get(key);
-        pendingRelocations.delete(key);
+        const item = pendingRelocations.get(key)
+        pendingRelocations.delete(key)
         dbRun(`
             UPDATE room_members
             SET cfi = ?, fraction = ?, last_active = ?, chapter = ?
             WHERE room_id = ? AND discord_id = ?
         `, [item.cfi, item.fraction, item.timestamp, item.chapter, roomId, discordId]).catch(err => {
-            console.error('[DB Disconnect Flush Error]', err.message);
-        });
+            console.error('[DB Disconnect Flush Error]', err.message)
+        })
     }
 
-    console.log(`[Leave] ${name} left Room: ${roomId}`);
+    console.log(`[Leave] ${name} left Room: ${roomId}`)
 
     broadcastToRoom(roomId, null, {
         type: 'member_left',
-        wsId
-    });
+        wsId,
+    })
 }
 
 function broadcastToRoom(roomId, excludeWs, messageObj) {
-    const messageStr = JSON.stringify(messageObj);
+    const messageStr = JSON.stringify(messageObj)
     for (const [ws, client] of clients.entries()) {
         if (client.roomId === roomId && ws !== excludeWs && ws.readyState === WebSocket.OPEN) {
-            ws.send(messageStr);
+            ws.send(messageStr)
         }
     }
 }
 
 // Ephemeral Storage: Prune files older than 24 hours (local and Supabase)
 function startPruningTask() {
-    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-    
-    console.log('[Pruner] Initializing automatic file pruning task (Runs every 1 hour).');
-    
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+    console.log('[Pruner] Initializing automatic file pruning task (Runs every 1 hour).')
+
     setInterval(async () => {
-        console.log('[Pruner] Running file pruning check...');
-        const cutoffTime = new Date(Date.now() - ONE_DAY_MS).toISOString();
-        
+        console.log('[Pruner] Running file pruning check...')
+        const cutoffTime = new Date(Date.now() - ONE_DAY_MS).toISOString()
+
         try {
             // Find rooms where last_active is older than 24 hours (or last_active is empty)
             // and book_path is not empty.
             const inactiveRooms = await dbAll(
                 "SELECT room_id, book_path FROM rooms WHERE (last_active < ? OR last_active IS NULL OR last_active = '') AND book_path != ''",
-                [cutoffTime]
-            );
-            
+                [cutoffTime],
+            )
+
             if (inactiveRooms && inactiveRooms.length > 0) {
-                console.log(`[Pruner] Found ${inactiveRooms.length} expired room sessions to prune.`);
-                
-                const supabaseKeysToDelete = [];
-                
+                console.log(`[Pruner] Found ${inactiveRooms.length} expired room sessions to prune.`)
+
+                const supabaseKeysToDelete = []
+
                 for (const room of inactiveRooms) {
                     if (room.book_path.startsWith('supabase://')) {
-                        const fileKey = room.book_path.replace('supabase://', '');
-                        supabaseKeysToDelete.push(fileKey);
+                        const fileKey = room.book_path.replace('supabase://', '')
+                        supabaseKeysToDelete.push(fileKey)
                     } else {
                         // Local file deletion
-                        const filename = path.basename(room.book_path);
-                        const filePath = path.join(uploadDir, filename);
+                        const filename = path.basename(room.book_path)
+                        const filePath = path.join(uploadDir, filename)
                         if (fs.existsSync(filePath)) {
                             fs.unlink(filePath, (err) => {
-                                if (!err) console.log(`[Pruner] Deleted local inactive book: ${filename}`);
-                            });
+                                if (!err) console.log(`[Pruner] Deleted local inactive book: ${filename}`)
+                            })
                         }
                     }
-                    
+
                     // Update room in db to clear book_path reference to indicate it's expired
                     // We keep filename/title/author so we can prompt for reupload!
-                    await dbRun("UPDATE rooms SET book_path = '' WHERE room_id = ?", [room.room_id]);
+                    await dbRun("UPDATE rooms SET book_path = '' WHERE room_id = ?", [room.room_id])
                 }
-                
+
                 // Delete from Supabase in bulk
                 if (supabase && supabaseKeysToDelete.length > 0) {
-                    console.log('[Pruner] Deleting from Supabase Storage:', supabaseKeysToDelete);
+                    console.log('[Pruner] Deleting from Supabase Storage:', supabaseKeysToDelete)
                     const { error } = await supabase.storage
                         .from('books')
-                        .remove(supabaseKeysToDelete);
-                    
+                        .remove(supabaseKeysToDelete)
+
                     if (error) {
-                        console.error('[Pruner Error] Failed to delete from Supabase Storage:', error);
+                        console.error('[Pruner Error] Failed to delete from Supabase Storage:', error)
                     } else {
-                        console.log('[Pruner] Successfully pruned files from Supabase Storage.');
+                        console.log('[Pruner] Successfully pruned files from Supabase Storage.')
                     }
                 }
             }
-            
+
             // 2. Permanently purge expired rooms older than 7 days
-            const EXPIRED_RETENTION_DAYS = 7;
-            const expiredCutoff = new Date(Date.now() - EXPIRED_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+            const EXPIRED_RETENTION_DAYS = 7
+            const expiredCutoff = new Date(Date.now() - EXPIRED_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString()
             const oldExpiredRooms = await dbAll(
                 "SELECT room_id FROM rooms WHERE (book_path = '' OR book_path IS NULL) AND (last_active < ? OR last_active IS NULL OR last_active = '')",
-                [expiredCutoff]
-            );
-            
+                [expiredCutoff],
+            )
+
             if (oldExpiredRooms && oldExpiredRooms.length > 0) {
-                console.log(`[Pruner] Permanently purging ${oldExpiredRooms.length} expired rooms older than ${EXPIRED_RETENTION_DAYS} days.`);
+                console.log(`[Pruner] Permanently purging ${oldExpiredRooms.length} expired rooms older than ${EXPIRED_RETENTION_DAYS} days.`)
                 for (const r of oldExpiredRooms) {
-                    await dbRun("DELETE FROM room_members WHERE room_id = ?", [r.room_id]);
-                    await dbRun("DELETE FROM highlights WHERE room_id = ?", [r.room_id]);
-                    await dbRun("DELETE FROM rooms WHERE room_id = ?", [r.room_id]);
+                    await dbRun('DELETE FROM room_members WHERE room_id = ?', [r.room_id])
+                    await dbRun('DELETE FROM highlights WHERE room_id = ?', [r.room_id])
+                    await dbRun('DELETE FROM rooms WHERE room_id = ?', [r.room_id])
                 }
             }
         } catch (e) {
-            console.error('[Pruner Error] Pruning task encountered an error:', e);
+            console.error('[Pruner Error] Pruning task encountered an error:', e)
         }
-    }, 60 * 60 * 1000); // Check every 1 hour
+    }, 60 * 60 * 1000) // Check every 1 hour
 }
 
-startPruningTask();
+startPruningTask()
 
 // Express Error Handling Middleware to catch Multer and other unhandled errors gracefully
 app.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ error: 'File too large. Maximum allowed size is 50MB.' });
+            return res.status(400).json({ error: 'File too large. Maximum allowed size is 50MB.' })
         }
-        return res.status(400).json({ error: `Upload error: ${err.message}` });
+        return res.status(400).json({ error: `Upload error: ${err.message}` })
     }
     if (err.message && err.message.startsWith('Unsupported file format')) {
-        return res.status(400).json({ error: err.message });
+        return res.status(400).json({ error: err.message })
     }
-    console.error('[Unhandled Server Error]', err);
-    res.status(500).json({ error: err.message || 'Internal Server Error' });
-});
+    console.error('[Unhandled Server Error]', err)
+    res.status(500).json({ error: err.message || 'Internal Server Error' })
+})
 
-const PORT = process.env.PORT || 3080;
-const HOST = process.env.HOST || '0.0.0.0';
+const PORT = process.env.PORT || 3080
+const HOST = process.env.HOST || '0.0.0.0'
 server.listen(PORT, HOST, () => {
-    console.log(`[Server] Running on http://${HOST}:${PORT}`);
-});
+    console.log(`[Server] Running on http://${HOST}:${PORT}`)
+})

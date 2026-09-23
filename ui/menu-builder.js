@@ -24,7 +24,7 @@ export class FoliateMenuBuilder {
 
     #initContainer() {
         this.#container.classList.add('menu-morph')
-        
+
         if (this.#triggerBtn) {
             this.#triggerBtn.addEventListener('click', (e) => {
                 e.stopPropagation()
@@ -231,7 +231,7 @@ export class FoliateMenuBuilder {
                 { id: 'blue', bg: '#E0F2FE', border: '#BAE6FD', label: 'Sky Blue' },
                 { id: 'dark', bg: '#18181B', border: '#27272A', label: 'Dark' },
                 { id: 'solarized', bg: '#002B36', border: '#073642', label: 'Solarized' },
-                { id: 'oled', bg: '#000000', border: '#333333', label: 'OLED Black' }
+                { id: 'oled', bg: '#000000', border: '#333333', label: 'OLED Black' },
             ]
 
             themes.forEach(t => {

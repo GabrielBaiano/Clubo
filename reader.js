@@ -164,7 +164,7 @@ class Reader {
         hyphenate: localStorage.getItem('paperback-hyphenate') !== 'false',
         theme: localStorage.getItem('paperback-theme') || 'system',
         fontFamily: localStorage.getItem('paperback-font-family') || 'publisher',
-        size: parseInt(localStorage.getItem('paperback-font-size') || '100', 10)
+        size: parseInt(localStorage.getItem('paperback-font-size') || '100', 10),
     }
     annotations = new Map()
     annotationsByValue = new Map()
@@ -185,7 +185,7 @@ class Reader {
         const html = document.documentElement
         html.classList.remove('theme-light', 'theme-dark', 'theme-sepia', 'theme-blue', 'theme-oled', 'theme-parchment', 'theme-solarized')
         html.classList.add(`theme-${theme}`)
-        
+
         this.style.theme = theme
         if (this.view && this.view.renderer) {
             this.view.renderer.setStyles?.(getCSS(this.style))
@@ -297,8 +297,8 @@ class Reader {
         this.ttsCurrentAnnotation = {
             range,
             style: {
-                fill: 'rgba(255, 235, 59, 0.45)'
-            }
+                fill: 'rgba(255, 235, 59, 0.45)',
+            },
         }
         this.view?.addAnnotation(this.ttsCurrentAnnotation)
         this.view?.renderer?.scrollToAnchor(range, true)
@@ -482,7 +482,7 @@ class Reader {
         // Build settings menu declaratively using FoliateMenuBuilder
         this.menuBuilder = new FoliateMenuBuilder({
             container: '#menu-button-morph',
-            trigger: '#menu-toggle-btn'
+            trigger: '#menu-toggle-btn',
         }).build([
             {
                 items: [
@@ -492,9 +492,9 @@ class Reader {
                         isZoom: true,
                         value: this.style.size,
                         onZoomOut: () => this.setFontSize((this.style.size || 100) - 10),
-                        onZoomIn: () => this.setFontSize((this.style.size || 100) + 10)
-                    }
-                ]
+                        onZoomIn: () => this.setFontSize((this.style.size || 100) + 10),
+                    },
+                ],
             },
             {
                 items: [
@@ -502,9 +502,9 @@ class Reader {
                         id: 'menu-theme-circles',
                         isThemeRow: true,
                         activeTheme: this.style.theme,
-                        onSelectTheme: (theme) => this.setTheme(theme)
-                    }
-                ]
+                        onSelectTheme: (theme) => this.setTheme(theme),
+                    },
+                ],
             },
             {
                 items: [
@@ -516,11 +516,11 @@ class Reader {
                             { label: 'Default', value: 'publisher' },
                             { label: 'Serif', value: 'serif' },
                             { label: 'Sans', value: 'sans-serif' },
-                            { label: 'Dyslexic', value: 'opendyslexic' }
+                            { label: 'Dyslexic', value: 'opendyslexic' },
                         ],
-                        onSelect: (val) => this.setFontFamily(val)
-                    }
-                ]
+                        onSelect: (val) => this.setFontFamily(val),
+                    },
+                ],
             },
             {
                 items: [
@@ -532,11 +532,11 @@ class Reader {
                             { label: '1.2', value: 1.2 },
                             { label: '1.4', value: 1.4 },
                             { label: '1.6', value: 1.6 },
-                            { label: '1.8', value: 1.8 }
+                            { label: '1.8', value: 1.8 },
                         ],
-                        onSelect: (val) => this.setLineSpacing(val)
-                    }
-                ]
+                        onSelect: (val) => this.setLineSpacing(val),
+                    },
+                ],
             },
             {
                 items: [
@@ -545,32 +545,32 @@ class Reader {
                         label: 'Auto-Hyphenation',
                         type: 'toggle',
                         checked: this.style.hyphenate,
-                        icon: `<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M5 6h7"/><path d="M5 18h10"/></svg>`,
-                        onClick: (checked) => this.setHyphenate(checked)
+                        icon: '<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M5 6h7"/><path d="M5 18h10"/></svg>',
+                        onClick: (checked) => this.setHyphenate(checked),
                     },
                     {
                         id: 'menu-scrolled-toggle',
                         label: 'Scrolling View',
                         type: 'toggle',
                         checked: this.view?.renderer?.getAttribute('flow') === 'scrolled',
-                        icon: `<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>`,
+                        icon: '<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>',
                         onClick: (checked) => {
                             this.view?.renderer?.setAttribute('flow', checked ? 'scrolled' : 'paginated')
-                        }
+                        },
                     },
                     {
                         id: 'menu-action-tts',
                         label: 'Read Aloud (TTS)',
                         type: 'toggle',
                         checked: this.ttsActive,
-                        icon: `<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`,
+                        icon: '<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>',
                         onClick: (checked) => {
                             this.menuBuilder.close()
                             if (checked) this.startTTS()
                             else this.stopTTS()
-                        }
-                    }
-                ]
+                        },
+                    },
+                ],
             },
             {
                 items: [
@@ -578,7 +578,7 @@ class Reader {
                         id: 'menu-action-home',
                         label: 'Back to Home',
                         isExit: true,
-                        icon: `<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+                        icon: '<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
                         onClick: () => {
                             this.menuBuilder.close()
                             if (typeof globalThis.leaveBookClubAndGoHome === 'function') {
@@ -586,12 +586,12 @@ class Reader {
                             } else {
                                 window.location.href = window.location.origin + window.location.pathname
                             }
-                        }
+                        },
                     },
                     {
                         id: 'menu-action-help',
                         label: 'Help & About',
-                        icon: `<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+                        icon: '<svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
                         onClick: () => {
                             this.menuBuilder.close()
                             const overlay = document.getElementById('help-modal-overlay')
@@ -599,10 +599,10 @@ class Reader {
                                 overlay.style.display = 'flex'
                                 document.body.style.overflow = 'hidden'
                             }
-                        }
-                    }
-                ]
-            }
+                        },
+                    },
+                ],
+            },
         ])
 
         // Initialize default active theme on load
@@ -740,7 +740,7 @@ class Reader {
 
 const open = async file => {
     const dropTarget = $('#drop-target')
-    
+
     // Clean up previous reader view from DOM to free memory
     if (globalThis.reader && globalThis.reader.view) {
         try {
@@ -762,14 +762,14 @@ const open = async file => {
         if (window.updateLoadingProgress) {
             window.updateLoadingProgress(45, 'Processing book file...')
         }
-        
+
         await reader.open(file)
-        
+
         if (window.updateLoadingProgress) {
             window.updateLoadingProgress(85, 'Rendering pages...')
         }
         await new Promise(resolve => setTimeout(resolve, 150))
-        
+
         if (window.updateLoadingProgress) {
             window.updateLoadingProgress(100, 'Book opened successfully!')
         }
@@ -828,7 +828,7 @@ if (scroller && viewMoreBtn && viewBackBtn) {
             scroller.scrollTo({ top: window.innerHeight, behavior: 'smooth' })
         }
     })
-    
+
     viewBackBtn.addEventListener('click', () => {
         const homeScreen = document.querySelector('.drop-screen-home')
         if (homeScreen) {

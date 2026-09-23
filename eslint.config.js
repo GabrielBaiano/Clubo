@@ -19,4 +19,12 @@ export default [js.configs.recommended, { ignores: ['vendor'] }, {
         'no-constant-condition': ['error', { checkLoops: false }],
         'no-empty': ['error', { allowEmptyCatch: true }],
     },
+}, {
+    files: ['server.js', 'db.js', 'rollup.config.js', 'eslint.config.js', 'tests/**/*.js'],
+    languageOptions: {
+        globals: {
+            ...globals.node,
+        },
+    },
 }]
+

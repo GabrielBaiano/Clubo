@@ -21,6 +21,7 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@zip.js/zip.js": "^2.7.52",
+    "eslint": "^9.28.0",
     "fflate": "^0.8.2",
     "fs-extra": "^11.2.0",
     "globals": "^15.9.0",
