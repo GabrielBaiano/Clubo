@@ -1,15 +1,15 @@
 {
-  "name": "paperback",
+  "name": "clubo",
   "version": "0.0.0",
-  "description": "Collaborative e-book reader in the browser",
+  "description": "Clubo - Collaborative e-book reader in the browser",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/GabrielBaiano/paperback.git"
+    "url": "git+https://github.com/GabrielBaiano/clubo.git"
   },
   "bugs": {
-    "url": "https://github.com/GabrielBaiano/paperback/issues"
+    "url": "https://github.com/GabrielBaiano/clubo/issues"
   },
-  "homepage": "https://github.com/GabrielBaiano/paperback#readme",
+  "homepage": "https://github.com/GabrielBaiano/clubo#readme",
   "author": "Gabriel Gama (GabrielBaiano)",
   "license": "MIT",
   "type": "module",

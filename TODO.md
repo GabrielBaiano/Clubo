@@ -1,6 +1,6 @@
-# 📋 Paperback - Roadmap & TODO
+# 📋 Clubo - Roadmap & TODO
 
-Este documento rastreia as melhorias, novas funcionalidades, otimizações de performance e correções planejadas para o **Paperback**.
+Este documento rastreia as melhorias, novas funcionalidades, otimizações de performance e correções planejadas para o **Clubo**.
 
 ---
 

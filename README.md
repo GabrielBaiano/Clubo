@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="ui/logo.png" alt="Paperback Logo" width="200"/>
+  <img src="ui/logo.png" alt="Clubo Logo" width="200"/>
 </p>
 
-<h1 align="center">Paperback</h1>
+<h1 align="center">Clubo</h1>
 
 <p align="center">
   <strong>A clean, fast, and lightweight collaborative e-book reader in the browser.</strong><br>
@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://paperback.fly.dev/"><img src="https://img.shields.io/badge/Website-Live-brightgreen.svg" alt="Website"></a>
   <a href="https://paperback.fly.dev/"><img src="https://img.shields.io/badge/Demo-Online-orange.svg" alt="Demo"></a>
-  <a href="https://github.com/GabrielBaiano/paperback"><img src="https://img.shields.io/github/license/GabrielBaiano/paperback.svg" alt="License"></a>
+  <a href="https://github.com/GabrielBaiano/clubo"><img src="https://img.shields.io/github/license/GabrielBaiano/clubo.svg" alt="License"></a>
   <a href="https://buymeacoffee.com/gabrielngal"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow.svg" alt="Buy Me A Coffee"></a>
 </p>
 
@@ -29,10 +29,10 @@
 - [License](#license)
 
 ## Introduction
-Paperback is a free web application that allows multiple people to read e-books together in real-time. Whether you are running a virtual book club, studying textbook chapters with classmates, or sharing a novel with a long-distance partner, Paperback synchronizes your reading positions, highlights, and annotations instantly.
+Clubo is a free web application that allows multiple people to read e-books together in real-time. Whether you are running a virtual book club, studying textbook chapters with classmates, or sharing a novel with a long-distance partner, Clubo synchronizes your reading positions, highlights, and annotations instantly.
 
 ## How to Use (Quick Start)
-Getting started with Paperback is simple and requires no software installation:
+Getting started with Clubo is simple and requires no software installation:
 1. **Log In**: Visit the website and click "Connect with Discord". This links your reading profile so friends can identify you in the room.
 2. **Create a Room**: Upload an EPUB file of the book you want to read. The app will immediately open the reader and generate a unique Room Code.
 3. **Share the Code**: Copy the room URL or code and send it to your friends.
@@ -47,10 +47,10 @@ To keep server and storage costs at absolute zero, book files are automatically 
 **No.** All of your highlights, colored markers, notes, and progress coordinates are stored permanently in our database. Deleting the book file never deletes your annotations.
 
 ### How do I restore an expired session?
-If you open an expired room, Paperback will show a welcome prompt asking you to drop or choose the required EPUB file. Once you provide the file, the book is uploaded again and you can resume reading immediately with all your highlights intact.
+If you open an expired room, Clubo will show a welcome prompt asking you to drop or choose the required EPUB file. Once you provide the file, the book is uploaded again and you can resume reading immediately with all your highlights intact.
 
 ## Credits and Attribution
-Paperback is a fork of the amazing [foliate-js](https://github.com/johnfactotum/foliate-js) library created by [John Factotum](https://github.com/johnfactotum). Foliate-JS provides the high-performance, browser-native rendering engine for EPUB, MOBI, and FB2 formats that Paperback builds upon. We are incredibly grateful for his work. Please consider visiting [johnfactotum/foliate-js](https://github.com/johnfactotum/foliate-js) and leaving a ⭐ star on the original repository to support his development!
+Clubo is a fork of the amazing [foliate-js](https://github.com/johnfactotum/foliate-js) library created by [John Factotum](https://github.com/johnfactotum). Foliate-JS provides the high-performance, browser-native rendering engine for EPUB, MOBI, and FB2 formats that Clubo builds upon. We are incredibly grateful for his work. Please consider visiting [johnfactotum/foliate-js](https://github.com/johnfactotum/foliate-js) and leaving a ⭐ star on the original repository to support his development!
 
 ## Key Features
 ◆ **Discord Integration**: Single-click secure login displaying user avatars and custom colors in the reader.
@@ -60,7 +60,7 @@ Paperback is a fork of the amazing [foliate-js](https://github.com/johnfactotum/
 ◆ **Reading History**: Access your recently opened active and expired rooms directly from the home dashboard.
 
 ## Developer Setup
-If you want to run Paperback locally or deploy your own instance:
+If you want to run Clubo locally or deploy your own instance:
 
 ### Prerequisites
 - Node.js >= 20.0.0
@@ -69,7 +69,7 @@ If you want to run Paperback locally or deploy your own instance:
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/GabrielBaiano/paperback.git
+git clone https://github.com/GabrielBaiano/clubo.git
 
 # Install dependencies
 npm install
@@ -95,10 +95,10 @@ ADMIN_USERS=gabrielbaiano_
 ```
 
 ## Support
-If you find Paperback helpful and want to support its active development, or share it with others:
+If you find Clubo helpful and want to support its active development, or share it with others:
 
 ### Buy Me a Coffee (Gabriel Baiano)
-If you find Paperback helpful and want to support its active development and hosting costs, buy me a coffee!
+If you find Clubo helpful and want to support its active development and hosting costs, buy me a coffee!
 
 <a href="https://buymeacoffee.com/gabrielngal" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="200" height="50" style="height: 50px !important; width: 200px !important;" />
@@ -110,29 +110,29 @@ To support the core engine that powers this reader, please support John Factotum
 - **Star the Project**: Leave a ⭐ star on the original [foliate-js repository](https://github.com/johnfactotum/foliate-js)
 
 ### Share the Project
-If you love reading books collaboratively with Paperback, help us spread the word! You can share the link with friends, invite them to your rooms, or share it on your favorite platforms:
+If you love reading books collaboratively with Clubo, help us spread the word! You can share the link with friends, invite them to your rooms, or share it on your favorite platforms:
 
-<a href="https://twitter.com/intent/tweet?text=Check%20out%20Paperback,%20a%20clean%20and%20lightweight%20collaborative%20e-book%20reader%20in%20the%20browser!%20https://paperback.fly.dev/" target="_blank">
+<a href="https://twitter.com/intent/tweet?text=Check%20out%20Clubo,%20a%20clean%20and%20lightweight%20collaborative%20e-book%20reader%20in%20the%20browser!%20https://paperback.fly.dev/" target="_blank">
   <img src="https://img.shields.io/badge/Twitter-1da1f2.svg?logo=twitter&logoColor=white&style=flat-square" alt="Share on Twitter" />
 </a>
-<a href="https://t.me/share/url?url=https://paperback.fly.dev/&text=Check%20out%20Paperback,%20a%20clean%20collaborative%20e-book%20reader%20in%20the%20browser!" target="_blank">
+<a href="https://t.me/share/url?url=https://paperback.fly.dev/&text=Check%20out%20Clubo,%20a%20clean%20collaborative%20e-book%20reader%20in%20the%20browser!" target="_blank">
   <img src="https://img.shields.io/badge/Telegram-26a5e4.svg?logo=telegram&logoColor=white&style=flat-square" alt="Share on Telegram" />
 </a>
-<a href="https://api.whatsapp.com/send?text=Check%20out%20Paperback,%20a%20clean%20collaborative%20e-book%20reader%20in%20the%20browser!%20https://paperback.fly.dev/" target="_blank">
+<a href="https://api.whatsapp.com/send?text=Check%20out%20Clubo,%20a%20clean%20collaborative%20e-book%20reader%20in%20the%20browser!%20https://paperback.fly.dev/" target="_blank">
   <img src="https://img.shields.io/badge/WhatsApp-25d366.svg?logo=whatsapp&logoColor=white&style=flat-square" alt="Share on WhatsApp" />
 </a>
-<a href="https://www.reddit.com/submit?url=https://paperback.fly.dev/&title=Paperback%20-%20Collaborative%20E-Book%20Reader%20in%20the%20Browser" target="_blank">
+<a href="https://www.reddit.com/submit?url=https://paperback.fly.dev/&title=Clubo%20-%20Collaborative%20E-Book%20Reader%20in%20the%20Browser" target="_blank">
   <img src="https://img.shields.io/badge/Reddit-ff4500.svg?logo=reddit&logoColor=white&style=flat-square" alt="Share on Reddit" />
 </a>
-<a href="https://news.ycombinator.com/submitlink?u=https://paperback.fly.dev/&t=Paperback%20-%20Collaborative%20E-Book%20Reader%20in%20the%20Browser" target="_blank">
+<a href="https://news.ycombinator.com/submitlink?u=https://paperback.fly.dev/&t=Clubo%20-%20Collaborative%20E-Book%20Reader%20in%20the%20Browser" target="_blank">
   <img src="https://img.shields.io/badge/Hacker%20News-ff6600.svg?logo=y-combinator&logoColor=white&style=flat-square" alt="Share on Hacker News" />
 </a>
-<a href="https://www.linkedin.com/sharing/share-offsite/?url=https://github.com/GabrielBaiano/paperback" target="_blank">
+<a href="https://www.linkedin.com/sharing/share-offsite/?url=https://github.com/GabrielBaiano/clubo" target="_blank">
   <img src="https://img.shields.io/badge/LinkedIn-0077b5.svg?logo=linkedin&logoColor=white&style=flat-square" alt="Share on LinkedIn" />
 </a>
 
 ### Help Us Improve
-Want to help make Paperback even better? We welcome all bug reports, feature suggestions, and pull requests!
+Want to help make Clubo even better? We welcome all bug reports, feature suggestions, and pull requests!
 
 <a href="./CONTRIBUTING.md">
   <img src="https://img.shields.io/badge/Contribute-Help%20Improve-blue.svg?style=flat-square" alt="Contributing Guide" />
@@ -143,7 +143,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 <p align="center">
-  Want to support Paperback? <a href="https://buymeacoffee.com/gabrielngal">Buy me a coffee!</a>
+  Want to support Clubo? <a href="https://buymeacoffee.com/gabrielngal">Buy me a coffee!</a>
 </p>
 <p align="center">
   Made with ❤️ and the help of <a href="https://github.com/GabrielBaiano/awesome-readme">Awesome-Readme</a>

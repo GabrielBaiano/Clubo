@@ -1836,7 +1836,11 @@ async function loadMyRooms() {
             const closeBtnTitle = isOwner ? 'Delete Room' : 'Leave Room'
 
             // Cover image URL from room or local storage cache
-            const cachedCover = room.coverUrl || localStorage.getItem(`paperback-cover-${room.title}`) || localStorage.getItem(`paperback-cover-${room.roomId}`)
+            const cachedCover = room.coverUrl
+                || localStorage.getItem(`clubo-cover-${room.title}`)
+                || localStorage.getItem(`clubo-cover-${room.roomId}`)
+                || localStorage.getItem(`paperback-cover-${room.title}`)
+                || localStorage.getItem(`paperback-cover-${room.roomId}`)
 
             const coverHtml = cachedCover
                 ? `<img class="your-room-cover" src="${cachedCover}" alt="Cover">`
