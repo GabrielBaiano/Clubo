@@ -119,3 +119,25 @@ Este bloco detalha o plano de ação técnico para rodar o Paperback nativamente
 - [ ] **Suporte a Formatos Adicionais (MOBI, PDF, CBZ/Mangás)**
   - *Descrição:* Liberar upload e leitura de PDF, MOBI e arquivos CBZ para quadrinhos/mangás.
   - *Arquivos envolvidos:* [`server.js`](file:///home/gabrielgama/repo-personal/foliate-jam/server.js), [`reader.js`](file:///home/gabrielgama/repo-personal/foliate-jam/reader.js)
+
+---
+
+## 🎨 Fase 7: Refatoração da Landing Page & Experiência de Entrada
+
+Este bloco foca em modernizar visualmente a tela inicial (*landing page* e *welcome screen*) do Clubo para transmitir o novo posicionamento de clube do livro colaborativo.
+
+- [ ] **Design System & Hero Section dos Mascotes**
+  - *Descrição:* Reformular o topo da landing page destacando os novos mascotes do Clubo com animação sutil de entrada (floating/aurora glow), tipografia moderna e slogan dinâmico.
+  - *Arquivos envolvidos:* [`reader.html`](file:///C:/Users/gabri/Documents/repo/paperback/reader.html), [`bookclub.css`](file:///C:/Users/gabri/Documents/repo/paperback/bookclub.css)
+- [ ] **Dropzone Moderna com Feedback Visual Interativo**
+  - *Descrição:* Redesenhar o container de upload e área de arrastar arquivos (`#drop-target`): animação de borda gradiente ativa ao arrastar um `.epub`, indicador de progresso mais elegante e suporte claro a mobile (botão de toque destacado).
+  - *Arquivos envolvidos:* [`reader.html`](file:///C:/Users/gabri/Documents/repo/paperback/reader.html), [`bookclub.css`](file:///C:/Users/gabri/Documents/repo/paperback/bookclub.css)
+- [ ] **Card de Prévia de Recursos ("Como funciona o Clubo")**
+  - *Descrição:* Adicionar seção rápida explicando visualmente em 3 passos: *1. Suba seu livro*, *2. Convide amigos com o link*, *3. Leiam com grifos e posições síncronas ao vivo*.
+  - *Arquivos envolvidos:* [`reader.html`](file:///C:/Users/gabri/Documents/repo/paperback/reader.html), [`bookclub.css`](file:///C:/Users/gabri/Documents/repo/paperback/bookclub.css)
+- [ ] **Banner / Painel de Demonstração Interativa sem Login**
+  - *Descrição:* Permitir que novos visitantes possam abrir um livro clássico público (ex: *Dom Casmurro* ou *Alice no País das Maravilhas*) em modo demonstração com 1 clique antes mesmo de fazer login no Discord.
+  - *Arquivos envolvidos:* [`reader.html`](file:///C:/Users/gabri/Documents/repo/paperback/reader.html), [`server.js`](file:///C:/Users/gabri/Documents/repo/paperback/server.js)
+- [ ] **Estante do Leitor (Shelf Modal) Integrada Diretamente na Home**
+  - *Descrição:* Exibir os livros recentes e salas ativas diretamente como uma estante visual com capas na página inicial para quem já estiver logado, sem depender apenas do botão de modal.
+  - *Arquivos envolvidos:* [`reader.html`](file:///C:/Users/gabri/Documents/repo/paperback/reader.html), [`bookclub.js`](file:///C:/Users/gabri/Documents/repo/paperback/bookclub.js)
