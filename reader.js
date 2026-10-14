@@ -851,6 +851,8 @@ if (copyrightLink) {
     })
 }
 
+globalThis.openBook = open
+
 const params = new URLSearchParams(location.search)
 const url = params.get('url')
 if (url) open(url).catch(e => console.error(e))
