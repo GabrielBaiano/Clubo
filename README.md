@@ -16,6 +16,10 @@
   <a href="https://buymeacoffee.com/gabrielngal"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow.svg" alt="Buy Me A Coffee"></a>
 </p>
 
+<p align="center">
+  <img src="ui/stats.svg" alt="Clubo Reader Stats - 28 Peak Concurrent, 91 Weekly Average" width="700"/>
+</p>
+
 ---
 
 ## Table of Contents

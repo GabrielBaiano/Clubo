@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 170" width="100%" height="auto">
+  <defs>
+    <!-- Background subtle dark gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0f15" />
+      <stop offset="50%" stop-color="#14141e" />
+      <stop offset="100%" stop-color="#0c0c12" />
+    </linearGradient>
+
+    <!-- Card 1 Aurora border / glow gradient (Peak concurrent) -->
+    <linearGradient id="peak-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#ec4899" />
+    </linearGradient>
+
+    <!-- Card 2 Aurora border / glow gradient (Weekly average) -->
+    <linearGradient id="weekly-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Pulse indicator ring animation -->
+    <filter id="glow-blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <style>
+    .title-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+    .metric-num { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 44px; font-weight: 800; }
+    .sub-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 400; fill: #94a3b8; }
+    .live-dot { animation: pulse 2s infinite ease-in-out; }
+    @keyframes pulse {
+      0% { opacity: 0.6; transform: scale(0.95); }
+      50% { opacity: 1; transform: scale(1.15); }
+      100% { opacity: 0.6; transform: scale(0.95); }
+    }
+  </style>
+
+  <!-- Container Box -->
+  <rect x="2" y="2" width="756" height="166" rx="20" fill="url(#bg-grad)" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1.5" />
+
+  <!-- ================= CARD 1: Peak Concurrent Readers ================= -->
+  <g transform="translate(24, 20)">
+    <!-- Sub-card background -->
+    <rect x="0" y="0" width="340" height="126" rx="14" fill="#181824" stroke="url(#peak-glow)" stroke-width="1.2" stroke-opacity="0.6" />
+    
+    <!-- Top badge / label -->
+    <circle cx="26" cy="28" r="5" fill="#a855f7" class="live-dot" />
+    <circle cx="26" cy="28" r="8" fill="#a855f7" opacity="0.3" class="live-dot" />
+    <text x="42" y="32" class="title-text" fill="#c084fc">Peak Concurrent Readers</text>
+    
+    <!-- Main Big Number -->
+    <text x="24" y="86" class="metric-num" fill="#ffffff">28</text>
+    <text x="86" y="74" class="title-text" fill="#a855f7" font-size="16">READERS</text>
+    
+    <!-- Subtitle / Context -->
+    <text x="24" y="108" class="sub-text">⚡ All-time peak in the same reading room</text>
+  </g>
+
+  <!-- ================= CARD 2: Weekly Average Readers ================= -->
+  <g transform="translate(396, 20)">
+    <!-- Sub-card background -->
+    <rect x="0" y="0" width="340" height="126" rx="14" fill="#181824" stroke="url(#weekly-glow)" stroke-width="1.2" stroke-opacity="0.6" />
+    
+    <!-- Top badge / label -->
+    <circle cx="26" cy="28" r="5" fill="#10b981" class="live-dot" />
+    <circle cx="26" cy="28" r="8" fill="#10b981" opacity="0.3" class="live-dot" />
+    <text x="42" y="32" class="title-text" fill="#34d399">Weekly Active Average</text>
+    
+    <!-- Main Big Number -->
+    <text x="24" y="86" class="metric-num" fill="#ffffff">91</text>
+    <text x="86" y="74" class="title-text" fill="#10b981" font-size="16">ACTIVE READERS</text>
+    
+    <!-- Subtitle / Context -->
+    <text x="24" y="108" class="sub-text">📊 Average collaborative readers / week</text>
+  </g>
+</svg>
