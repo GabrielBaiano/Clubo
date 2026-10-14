@@ -1,10 +1,18 @@
-# Contributing to Paperback
+# Contributing to Clubo
 
-Thank you for your interest in contributing to Paperback! We welcome all contributions, from bug fixes and documentation to new features and design updates.
+Thank you for your interest in contributing to Clubo! We welcome all contributions, from bug fixes and documentation to new features and design updates.
 
 To help you get started, this guide explains how to open issues, submit Pull Requests (including rules for AI-assisted contributions), and support the project.
 
-Check out our [Reader Menu Roadmap & TODO](TODO.md) to see active feature tasks, roadmap items, and planned improvements for the reader menu.
+Check out our [Roadmap & TODO](TODO.md) to see active feature tasks, roadmap items, and planned improvements.
+
+---
+
+## Branch Workflow (`development` -> `main`)
+
+For stability and continuous delivery:
+- **`development`** is our primary integration branch. **All new features, bug fixes, and Pull Requests must be targeted at `development`**, never directly to `main`.
+- **`main`** is our production-ready, deployment branch. Once changes in `development` are fully tested and validated, they are merged into `main` and released to production.
 
 ---
 
@@ -13,7 +21,7 @@ Check out our [Reader Menu Roadmap & TODO](TODO.md) to see active feature tasks,
 Issues are the best way to report bugs, suggest features, or ask questions.
 
 ### Opening a Bug Report
-If you find something in Paperback that is not working as expected, please open a Bug Report issue and include:
+If you find something in Clubo that is not working as expected, please open a Bug Report issue and include:
 1. **Clear Summary**: A concise title explaining the problem.
 2. **Steps to Reproduce**: Detailed list of steps to trigger the bug.
 3. **Expected vs. Actual Behavior**: What should have happened vs. what actually happened.
@@ -21,7 +29,7 @@ If you find something in Paperback that is not working as expected, please open 
 5. **Screenshots or Logs**: Console error messages or screenshots if the issue is visual.
 
 ### Suggesting Features
-Have an idea to make Paperback better? Create a Feature Request issue and explain:
+Have an idea to make Clubo better? Create a Feature Request issue and explain:
 - What problem this feature solves.
 - How you visualize the feature working in the user interface.
 - Any alternative solutions you have considered.
@@ -33,12 +41,15 @@ Have an idea to make Paperback better? Create a Feature Request issue and explai
 We welcome your code contributions! To make the review process smooth, please follow these steps:
 
 ### 1. Preparing your Changes
-- Fork the repository and create your branch from `main` (e.g. `git checkout -b feature/my-new-feature`).
+- Fork the repository and create your feature branch from `development`:
+  ```bash
+  git checkout -b feature/my-new-feature development
+  ```
 - Make your code changes, ensuring that you preserve existing comments and structure.
-- Test your changes locally to ensure the web application runs without errors (`npm start`).
+- Test your changes locally to ensure the web application runs without errors (`npm test` and `npm start`).
 
 ### 2. Submitting the PR
-- Push your branch to your fork on GitHub and open a Pull Request against our `main` branch.
+- Push your branch to your fork on GitHub and open a Pull Request against our **`development`** branch.
 - In your PR description, explain what changes were made, why they are needed, and how you verified them.
 
 ### 3. Rules for AI-Assisted PRs
