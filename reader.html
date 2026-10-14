@@ -1740,24 +1740,25 @@ foliate-view {
 .drop-screen-more {
     min-height: 100vh;
     height: auto;
+    width: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     justify-content: flex-start;
     text-align: center;
     position: relative;
-    background: transparent;
-    padding: 60px 20px 80px 20px;
+    padding: 60px clamp(16px, 4vw, 56px) 80px clamp(16px, 4vw, 56px);
     box-sizing: border-box;
 }
 
 .drop-more-content {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    max-width: 960px;
+    align-items: stretch;
     width: 100%;
-    padding: 0 16px;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0;
     box-sizing: border-box;
 }
 
@@ -1961,23 +1962,24 @@ foliate-view {
    ========================================================================== */
 .bookshelf-app {
     width: 100%;
-    max-width: 720px;
+    max-width: 100%;
     margin: 0 auto 30px auto;
     text-align: left;
 }
 
 .shelf-hero-title {
-    font-size: 2.4rem;
+    font-size: 2.6rem;
     font-weight: 800;
     font-family: Georgia, serif;
     letter-spacing: -0.02em;
     margin-bottom: 24px;
     color: #111827 !important;
     text-align: left;
+    padding: 0 4px;
 }
 
 .shelf-section {
-    margin-bottom: 38px;
+    margin-bottom: 42px;
     width: 100%;
 }
 
@@ -1985,12 +1987,12 @@ foliate-view {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
-    padding: 0 4px;
+    margin-bottom: 16px;
+    padding: 0 8px;
 }
 
 .shelf-title {
-    font-size: 1.15rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: #111827 !important;
 }
@@ -1998,8 +2000,8 @@ foliate-view {
 .shelf-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.82rem;
+    gap: 10px;
+    font-size: 0.86rem;
     color: #6b7280 !important;
 }
 
@@ -2012,8 +2014,8 @@ foliate-view {
     border: none;
     color: #9ca3af;
     cursor: pointer;
-    font-size: 1.1rem;
-    padding: 2px 6px;
+    font-size: 1.2rem;
+    padding: 4px 8px;
     transition: color 0.15s, transform 0.15s;
     line-height: 1;
 }
@@ -2033,25 +2035,27 @@ foliate-view {
 /* Row of standing books */
 .shelf-books-row {
     display: flex;
-    gap: 16px;
+    gap: 20px;
     align-items: flex-end;
-    padding: 12px 14px 28px 14px;
+    padding: 14px 28px 28px 28px;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
     scroll-behavior: smooth;
+    width: 100%;
+    box-sizing: border-box;
 }
 .shelf-books-row::-webkit-scrollbar {
     display: none;
 }
 
 .shelf-book {
-    flex: 0 0 130px;
-    width: 130px;
-    height: 188px;
-    border-radius: 4px;
+    flex: 0 0 145px;
+    width: 145px;
+    height: 210px;
+    border-radius: 5px;
     position: relative;
-    box-shadow: 0 14px 24px -4px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 14px 26px -4px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.12);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
     cursor: pointer;
     overflow: hidden;
@@ -2060,7 +2064,7 @@ foliate-view {
 
 .shelf-book:hover {
     transform: translateY(-8px);
-    box-shadow: 0 22px 32px -4px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 22px 34px -4px rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .shelf-book img {
@@ -2085,8 +2089,8 @@ foliate-view {
     bottom: 0px;
     left: 0;
     right: 0;
-    height: 60px;
-    border-radius: 12px;
+    height: 66px;
+    border-radius: 14px;
     pointer-events: none;
     z-index: 10;
 }
@@ -2220,16 +2224,16 @@ foliate-view {
                 <span>back</span>
             </button>
             
-            <div class="drop-more-content" style="gap: 24px; max-width: 720px; width: 100%;">
+            <div class="drop-more-content" style="gap: 28px; width: 100%; max-width: 100%;">
                 <div class="bookshelf-app">
                     <h1 class="shelf-hero-title">Books</h1>
 
-                    <!-- Shelf 1: Design -->
+                    <!-- Shelf 1: Design & Philosophy -->
                     <div class="shelf-section">
                         <div class="shelf-header">
                             <h2 class="shelf-title">Design</h2>
                             <div class="shelf-meta">
-                                <span>16 books</span>
+                                <span>12 books</span>
                                 <button class="shelf-arrow-btn prev" aria-label="Previous">‹</button>
                                 <button class="shelf-arrow-btn next" aria-label="Next">›</button>
                             </div>
@@ -2252,6 +2256,27 @@ foliate-view {
                                 <div class="shelf-book" data-book-url="/public-books/the-republic.epub" title="A República - Platão (Clique para ler)">
                                     <img src="ui/covers/the-republic.jpg" alt="The Republic">
                                 </div>
+                                <div class="shelf-book" data-book-url="/public-books/frankenstein.epub" title="Frankenstein - Mary Shelley (Clique para ler)">
+                                    <img src="ui/covers/frankenstein.jpg" alt="Frankenstein">
+                                </div>
+                                <div class="shelf-book" data-book-url="/public-books/the-metamorphosis.epub" title="A Metamorfose - Franz Kafka (Clique para ler)">
+                                    <img src="ui/covers/the-metamorphosis.jpg" alt="The Metamorphosis">
+                                </div>
+                                <div class="shelf-book" data-book-url="/public-books/alice-in-wonderland.epub" title="Alice no País das Maravilhas - Lewis Carroll (Clique para ler)">
+                                    <img src="ui/covers/alice-in-wonderland.jpg" alt="Alice in Wonderland">
+                                </div>
+                                <div class="shelf-book" data-book-url="/public-books/dom-casmurro.epub" title="Dom Casmurro - Machado de Assis (Clique para ler)">
+                                    <img src="ui/covers/dom-casmurro.jpg" alt="Dom Casmurro">
+                                </div>
+                                <div class="shelf-book" title="Read People Like a Book - Patrick King">
+                                    <img src="ui/covers/read-people-like-a-book.jpg" alt="Read People Like a Book">
+                                </div>
+                                <div class="shelf-book" title="The Power of Your Subconscious Mind - Joseph Murphy">
+                                    <img src="ui/covers/power-subconscious-mind.jpg" alt="The Power of Your Subconscious Mind">
+                                </div>
+                                <div class="shelf-book" title="The Body Keeps the Score - Bessel van der Kolk">
+                                    <img src="ui/covers/the-body-keeps-the-score.jpg" alt="The Body Keeps the Score">
+                                </div>
                             </div>
 
                             <div class="acrylic-shelf amber">
@@ -2261,12 +2286,12 @@ foliate-view {
                         </div>
                     </div>
 
-                    <!-- Shelf 2: Psychology -->
+                    <!-- Shelf 2: Psychology & Literature -->
                     <div class="shelf-section">
                         <div class="shelf-header">
                             <h2 class="shelf-title">Psychology</h2>
                             <div class="shelf-meta">
-                                <span>8 books</span>
+                                <span>12 books</span>
                                 <button class="shelf-arrow-btn prev" aria-label="Previous">‹</button>
                                 <button class="shelf-arrow-btn next" aria-label="Next">›</button>
                             </div>
@@ -2294,6 +2319,21 @@ foliate-view {
                                 </div>
                                 <div class="shelf-book" data-book-url="/public-books/alice-in-wonderland.epub" title="Alice no País das Maravilhas - Lewis Carroll (Clique para ler)">
                                     <img src="ui/covers/alice-in-wonderland.jpg" alt="Alice in Wonderland">
+                                </div>
+                                <div class="shelf-book" data-book-url="/public-books/the-art-of-war.epub" title="A Arte da Guerra - Sun Tzu (Clique para ler)">
+                                    <img src="ui/covers/the-art-of-war.jpg" alt="The Art of War">
+                                </div>
+                                <div class="shelf-book" data-book-url="/public-books/the-republic.epub" title="A República - Platão (Clique para ler)">
+                                    <img src="ui/covers/the-republic.jpg" alt="The Republic">
+                                </div>
+                                <div class="shelf-book" title="Bauhaus">
+                                    <img src="ui/covers/bauhaus.jpg" alt="Bauhaus">
+                                </div>
+                                <div class="shelf-book" title="Dieter Rams: Less, but better">
+                                    <img src="ui/covers/dieter-rams.jpg" alt="Dieter Rams">
+                                </div>
+                                <div class="shelf-book" title="The Design of Everyday Things - Don Norman">
+                                    <img src="ui/covers/design-everyday-things.jpg" alt="The Design of Everyday Things">
                                 </div>
                             </div>
 
@@ -2363,8 +2403,8 @@ foliate-view {
                         const prev = section.querySelector('.shelf-arrow-btn.prev');
                         const next = section.querySelector('.shelf-arrow-btn.next');
                         if (row && prev && next) {
-                            prev.addEventListener('click', () => row.scrollBy({ left: -240, behavior: 'smooth' }));
-                            next.addEventListener('click', () => row.scrollBy({ left: 240, behavior: 'smooth' }));
+                            prev.addEventListener('click', () => row.scrollBy({ left: -Math.max(340, Math.round(row.clientWidth * 0.7)), behavior: 'smooth' }));
+                            next.addEventListener('click', () => row.scrollBy({ left: Math.max(340, Math.round(row.clientWidth * 0.7)), behavior: 'smooth' }));
                         }
                     });
 
