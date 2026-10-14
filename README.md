@@ -12,12 +12,10 @@
 <p align="center">
   <a href="https://paperback.fly.dev/"><img src="https://img.shields.io/badge/Website-Live-brightgreen.svg" alt="Website"></a>
   <a href="https://paperback.fly.dev/"><img src="https://img.shields.io/badge/Demo-Online-orange.svg" alt="Demo"></a>
+  <img src="https://img.shields.io/badge/Peak%20Concurrent-28%20readers-blueviolet.svg" alt="Peak Concurrent: 28 readers">
+  <img src="https://img.shields.io/badge/Weekly%20Avg-91%20active-blue.svg" alt="Weekly Avg: 91 active">
   <a href="https://github.com/GabrielBaiano/clubo"><img src="https://img.shields.io/github/license/GabrielBaiano/clubo.svg" alt="License"></a>
   <a href="https://buymeacoffee.com/gabrielngal"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow.svg" alt="Buy Me A Coffee"></a>
-</p>
-
-<p align="center">
-  <img src="ui/stats.svg" alt="Clubo Reader Stats - 28 Peak Concurrent, 91 Weekly Average" width="700"/>
 </p>
 
 ---
