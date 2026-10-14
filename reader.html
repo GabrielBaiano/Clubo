@@ -1940,7 +1940,65 @@ foliate-view {
             <div class="drop-target-inner">
                 <!-- Landing / Discord login welcome screen (mimics original welcome screen styling) -->
                 <div id="bc-landing-text" style="display: flex; flex-direction: column; align-items: center;">
-                    <img src="ui/logo.png" alt="Clubo Logo" width="120" height="120" style="object-fit: contain; margin-bottom: 8px; filter: drop-shadow(0 8px 24px rgba(168, 85, 247, 0.25));">
+                    <!-- Animated 3D Mascots with Ping-Pong loop & fallback -->
+                    <div class="bc-mascot-anim-wrapper" style="position: relative; width: 130px; height: 130px; margin-bottom: 8px; border-radius: 28px; overflow: hidden; background: #000000; box-shadow: 0 12px 36px rgba(168, 85, 247, 0.35); border: 1px solid rgba(255, 255, 255, 0.1);">
+                        <video id="bc-mascot-video" playsinline muted autoplay preload="auto" style="width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; pointer-events: none;">
+                            <source src="ui/mascots-reading.mp4" type="video/mp4">
+                        </video>
+                        <!-- Fallback static image if video can't play -->
+                        <img id="bc-mascot-fallback" src="ui/logo.png" alt="Clubo Logo" style="display: none; width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <script>
+                        (function() {
+                            const v = document.getElementById('bc-mascot-video');
+                            const fb = document.getElementById('bc-mascot-fallback');
+                            if (!v) return;
+
+                            // Ping-pong loop between 0.05s and 1.05s (before head mutates into a star)
+                            const START_TIME = 0.05;
+                            const END_TIME = 1.05;
+                            let forward = true;
+                            let animId;
+
+                            v.addEventListener('loadedmetadata', function() {
+                                v.currentTime = START_TIME;
+                                v.play().catch(() => {
+                                    v.style.display = 'none';
+                                    if (fb) fb.style.display = 'block';
+                                });
+                            });
+
+                            v.addEventListener('error', function() {
+                                v.style.display = 'none';
+                                if (fb) fb.style.display = 'block';
+                            });
+
+                            function loopFrame() {
+                                if (v.paused || v.ended) {
+                                    v.play().catch(() => {});
+                                }
+                                if (forward) {
+                                    if (v.currentTime >= END_TIME) {
+                                        forward = false;
+                                        v.pause();
+                                    }
+                                } else {
+                                    // Smoothly step backward towards START_TIME
+                                    v.currentTime = Math.max(START_TIME, v.currentTime - 0.035);
+                                    if (v.currentTime <= START_TIME) {
+                                        forward = true;
+                                        v.play().catch(() => {});
+                                    }
+                                }
+                                animId = requestAnimationFrame(loopFrame);
+                            }
+
+                            v.addEventListener('play', function onFirstPlay() {
+                                v.removeEventListener('play', onFirstPlay);
+                                animId = requestAnimationFrame(loopFrame);
+                            });
+                        })();
+                    </script>
                     <h1 style="margin-top: 0; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em;">Clubo</h1>
                     <p style="color: GrayText; font-size: 0.9rem; margin-top: 4px; margin-bottom: 24px; max-width: 340px; line-height: 1.5; font-family: inherit;">
                         The real-time virtual book club. Read books together with friends, share highlights, take notes, and sync progress live.
