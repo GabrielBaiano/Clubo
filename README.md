@@ -5,8 +5,8 @@
 <h1 align="center">Clubo</h1>
 
 <p align="center">
-  <strong>A clean, fast, and lightweight collaborative e-book reader in the browser.</strong><br>
-  <em>Read books together with your friends, partners, or book clubs in real-time.</em>
+  <strong>The real-time social reading platform & virtual book club in your browser.</strong><br>
+  <em>Host online book clubs, read together with friends, sync progress live, and share interactive highlights.</em>
 </p>
 
 <p align="center">
@@ -31,7 +31,7 @@
 - [License](#license)
 
 ## Introduction
-Clubo is a free web application that allows multiple people to read e-books together in real-time. Whether you are running a virtual book club, studying textbook chapters with classmates, or sharing a novel with a long-distance partner, Clubo synchronizes your reading positions, highlights, and annotations instantly.
+Clubo is a modern, social e-book platform designed to bring book clubs, study circles, and reading partners together in real-time. Simply create a room, share the link, and read alongside your club members — seeing each other's live progress, cursor positions, reactions, and synchronized highlights without installing any software.
 
 ## How to Use (Quick Start)
 Getting started with Clubo is simple and requires no software installation:

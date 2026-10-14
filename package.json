@@ -1,7 +1,7 @@
 {
   "name": "clubo",
   "version": "0.0.0",
-  "description": "Clubo - Collaborative e-book reader in the browser",
+  "description": "Clubo - The real-time virtual book club & collaborative e-book reader in the browser",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/GabrielBaiano/clubo.git"
